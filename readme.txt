@@ -1,0 +1,3 @@
+stock库存检查
+pricechanges补货检查邮件通知
+replenish价格变动检查
