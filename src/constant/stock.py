@@ -1,0 +1,5 @@
+#stock_status
+# 在庫あり
+MONBELL_STOCK_STATUS_HAVING = 1
+# 在庫わずか
+MONBELL_STOCK_STATUS_ONLY = 2
