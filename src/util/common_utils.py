@@ -12,8 +12,11 @@ def prices_formatter(prices):
     #     # number_without_commas = number_with_commas.replace(',', '')
     #     # return number_without_commas
     #     return number_with_commas
-    numbers = re.findall(r'\d+', prices.replace('，', ','))
-    return ''.join(numbers)
+
+    # numbers = re.findall(r'\d+', prices.replace('，', ','))
+    # return ''.join(numbers)
+    num = int(re.sub(r'[^\d]', '', prices))
+    return num
 
 
 def color_formatter(color, item_code):
