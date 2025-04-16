@@ -67,7 +67,7 @@ def service():
                                     item_codes.append(output_data['url'])
                                     price_list.append(prices[index])
                             else:
-                                if output_data['官网库存']:
+                                if output_data['官网库存'] and output_data['官网库存'] == '在庫あり':
                                     output_mail_list.append(output_data)
                                 else:
                                     item_codes.append(output_data['url'])
