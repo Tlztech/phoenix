@@ -163,7 +163,8 @@
                                         "url": "%item_url%",
                                         "action_type": "dynamic",
                                         "action": "list",
-                                        "path": {"data-size": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label[not(contains(@class, 'is-disabled'))]", "data-size-url": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label[not(contains(@class, 'is-disabled'))]", "data-color": "//button[contains(@class,'product-swatch selected')]"},
+                                        # 网站上不论该商品是不是有货，都要读取直营店库存2025/04/14"path": {"data-size": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label[not(contains(@class, 'is-disabled'))]", "data-size-url": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label[not(contains(@class, 'is-disabled'))]", "data-color": "//button[contains(@class,'product-swatch selected')]"},
+                                        "path": {"data-size": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label", "data-size-url": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label", "data-color": "//button[contains(@class,'product-swatch selected')]"},
                                         # l_2sku api
                                         "actions": [
                                             {
