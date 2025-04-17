@@ -240,4 +240,28 @@
             },
         ]
     },
+    {
+        "brand": "converse",
+        "targets":[
+            {
+                "host": "rakuten/abc-mart",
+                "url": "https://www.rakuten.co.jp/",
+                "catalog": "clothes",
+                "objects": [
+                    {
+                        "object": "price",
+                        # 1.商品
+                        "actions": [
+                            {
+                                "url": "%url%",
+                                "action_type": "dynamic",
+                                "action": "get",
+                                "path": {"parent":"//button[contains(@class, 'selected') and contains(@aria-label, 'cm')]", "price":".//span/div/div/div[2]", "stock":".//span/div/div/div[3]/div[2]"},
+                            },
+                        ]
+                    }
+                ]
+            },
+        ]
+    },
 ]
