@@ -47,15 +47,13 @@ def sprider(item_codes, targets):
                                     if element:
                                         try:
                                             current_path = action['path']['price']
-                                            element = element.find_element(By.XPATH, current_path)
-                                            price = element.text
+                                            price = element.find_element(By.XPATH, current_path).text
                                         except NoSuchElementException as nsee:
                                             log_util.error(f"商品{item_code}价格获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
                                             price = ''
                                         try:
                                             current_path = action['path']['stock']
-                                            element = element.find_element(By.XPATH, current_path)
-                                            stock = element.text
+                                            stock = element.find_element(By.XPATH, current_path).text
                                         except NoSuchElementException as nsee:
                                             stock = '有货'
                                     item_data = {'url': item_code, '官网库存': stock, 'price': price}
