@@ -77,3 +77,8 @@ def reorder_dict(dict_list, order):
         {k: d.get(k) for k in order if k in d}
         for d in dict_list
     ]
+
+
+def deduplicate(original_lst):
+    unique_lst = list(set(original_lst))
+    return unique_lst

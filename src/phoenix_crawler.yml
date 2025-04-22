@@ -39,16 +39,6 @@
                             },
                         ]
                     },
-#                    {
-#                    "object": "stocks",
-#                    "actions": [
-#                        {
-#                        "url": "www.descente.com",
-#                        "action_type": "static",
-#                        "path": "//*[@id='shopify-section-template--14231938007145__main']/section/div/div/div[3]/div[2]/p[1]/span[1]/span/span"
-#                        },
-#                    ]
-#                    }
                 ]
             },
             {
@@ -257,6 +247,30 @@
                                 "action_type": "dynamic",
                                 "action": "get",
                                 "path": {"parent":"//button[contains(@class, 'selected') and contains(@aria-label, 'cm')]", "price":".//span/div/div/div[2]", "stock":".//span/div/div/div[3]/div[2]"},
+                            },
+                        ]
+                    }
+                ]
+            },
+        ]
+    },
+    {
+        "brand": "descente",
+        "targets":[
+            {
+                "host": "descente",
+                "url": "https://store.descente.co.jp/",
+                "catalog": "clothes",
+                "objects": [
+                    {
+                        "object": "price",
+                        # 1.商品
+                        "actions": [
+                            {
+                                "url": "%url%",
+                                "action_type": "dynamic",
+                                "action": "get",
+                                "path": {"parent":"//ul[@class='sizeConfigGroup']/li/div[@class='wrap_size_stock']", "size":".//div[@class='size']", "stock":".//div[@class='stock']/span", "price":"//*[@id='mrkSalesPrice']"},
                             },
                         ]
                     }
