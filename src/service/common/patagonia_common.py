@@ -42,6 +42,14 @@ def sprider(item_codes, targets):
                                     if action['url']:
                                         driver.get(action['url'].replace('%item_code%', str(item_code)))
                                     if action['action'] == "click and get":
+                                        try:
+                                            current_path = action['path']['check-product-exists']
+                                            driver.find_element(By.XPATH, current_path)
+                                            output_data_list.append({'item_code': item_code, 'url': '商品无货', 'sku': sku_file})
+                                            log_util.error(f"检索不到商品,商品{sku_file}数据无法获取")
+                                            break
+                                        except NoSuchElementException as nsee:
+                                            pass
                                         # color遍历
                                         current_path = list(action['path'].values())[0]
                                         color_elements = driver.find_elements(By.XPATH, current_path)
@@ -49,6 +57,7 @@ def sprider(item_codes, targets):
                                         for color_element in color_elements:
                                             item_code_color = color_element.get_attribute(list(action['path'].keys())[0])
                                             if item_code_color == item_code:
+                                                color_element.click()
                                                 find_color = True
                                                 break
                                         if not find_color and color_elements:
