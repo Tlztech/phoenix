@@ -77,7 +77,7 @@ def sprider(item_codes, targets):
                                                 color_element = WebDriverWait(driver, 10).until(
                                                     EC.visibility_of_element_located((By.XPATH, current_path))
                                                 )
-                                                color_class_list = color_element.get_attribute("class").split(" ")
+                                                # color_class_list = color_element.get_attribute("class").split(" ")
                                                 # 网站上不论该商品是不是有货，都要读取直营店库存 2025/04/14
                                                 # if "disabled" in color_class_list:
                                                 #     output_data_list.append({'item_code': item_code, 'url': '商品color无货', 'sku': sku_file})
