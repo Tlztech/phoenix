@@ -1,6 +1,7 @@
 import re
 import csv
 from io import StringIO, BytesIO, TextIOWrapper
+from urllib.parse import urlparse, parse_qs
 
 
 def prices_formatter(prices):
@@ -82,3 +83,18 @@ def reorder_dict(dict_list, order):
 def deduplicate(original_lst):
     unique_lst = list(set(original_lst))
     return unique_lst
+
+
+def parse_url(url, param):
+    # 解析 URL
+    parsed_url = urlparse(url)
+
+    # 提取查询参数
+    query_params = parse_qs(parsed_url.query)
+
+    variant_value = query_params.get(param)
+    if variant_value:
+        variant_value = variant_value[0]
+    else:
+        variant_value = None
+    return variant_value

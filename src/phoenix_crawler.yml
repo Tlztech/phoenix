@@ -278,4 +278,28 @@
             },
         ]
     },
+    {
+        "brand": "salomon",
+        "targets":[
+            {
+                "host": "salomon",
+                "url": "https://salomon.jp/",
+                "catalog": "clothes",
+                "objects": [
+                    {
+                        "object": "price",
+                        # 1.商品
+                        "actions": [
+                            {
+                                "url": "%url%",
+                                "action_type": "dynamic",
+                                "action": "get",
+                                "path": {"stock":"//label[@data-variant-id='%variant%' and not(contains(@class, 'no_stock'))]", "price":"//span[@class='price-item price-item--regular']", "color":"//div[@id='productColorName']", "size":"//label[@data-variant-id='%variant%']"},
+                            },
+                        ]
+                    }
+                ]
+            },
+        ]
+    },
 ]
