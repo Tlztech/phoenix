@@ -79,12 +79,12 @@ def service():
                         if output_mail_list:
                             byte_data = common_utils.generate_excel_friendly_csv(common_utils.transform_dict_to_list(output_mail_list))
                             log_util.info(f"mail:{bytes.decode(byte_data)}")
-                            # mail_util.send_csv_attachment("补货检查", byte_data)
+                            mail_util.send_csv_attachment("补货检查", byte_data)
                         if error_price_list:
                             error_msg = f"价格获取失败，请确认这些商品网页{':'.join(error_price_list)}"
                             log_util.error(error_msg)
                             # notify error with mail
-                            # mail_util.send_message("补货检查处理错误信息", error_msg)
+                            mail_util.send_message("补货检查处理错误信息", error_msg)
                             log_util.error(error_msg)
                     else:
                         log_util.info("没有数据写入到邮件")
