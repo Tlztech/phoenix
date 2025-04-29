@@ -302,4 +302,28 @@
             },
         ]
     },
+    {
+        "brand": "onitsukatiger",
+        "targets":[
+            {
+                "host": "onitsukatiger",
+                "url": "https://www.onitsukatiger.com/",
+                "catalog": "clothes",
+                "objects": [
+                    {
+                        "object": "price",
+                        # 1.商品
+                        "actions": [
+                            {
+                                "url": "%url%",
+                                "action_type": "dynamic",
+                                "action": "get",
+                                "path": {"stock":"//div[contains(@class, 'swatch-option text')]", "having_stock":"product-addtocart-button", "price":"//div[@class='product-info-price']/div[@class='price-box price-final_price']//span[@class='price']", "color":"//*[@id='product-options-wrapper']/div/div/div[1]/span[2]", "size":"data-option-label"},
+                            },
+                        ]
+                    }
+                ]
+            },
+        ]
+    },
 ]
