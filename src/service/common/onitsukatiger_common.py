@@ -61,7 +61,6 @@ def sprider(item_codes, targets):
                                         stock = ''
                                     if elements:
                                         for element in elements:
-                                            print(element.get_attribute("class"))
                                             if action['path']['having_stock'] in element.get_attribute("class").split(" "):
                                                 stock = '有货'
                                             else:
