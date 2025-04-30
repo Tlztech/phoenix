@@ -43,10 +43,12 @@ def sprider(item_codes, targets):
                                         price = ''
                                     try:
                                         current_path = action['path']['color']
-                                        color = driver.find_element(By.XPATH, current_path).text
-                                    except NoSuchElementException as nsee:
+                                        color = WebDriverWait(driver, 30).until(
+                                            EC.visibility_of_element_located((By.XPATH, current_path))
+                                        ).text
+                                    except TimeoutException as te:
                                         log_util.error(
-                                            f"商品{item_code}颜色获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                            f"商品{item_code}颜色获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
                                         color = ''
                                     try:
                                         current_path = action['path']['stock']
