@@ -95,6 +95,7 @@ def get_driver(mode='DEBUG'):
     # options.add_argument("--disable-application-cache")
     options.add_argument("start-maximized")
     driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+    driver.implicitly_wait(10)
     return driver
 
 
