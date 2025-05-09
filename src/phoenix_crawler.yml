@@ -222,7 +222,7 @@
                                 "url": "%url%",
                                 "action_type": "dynamic",
                                 "action": "get",
-                                "path": {"price":"//p[@class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-primary-dark fr-ec-text-transform-normal']", "stock":"//div[@class='fr-ec-mb-spacer-8']//p[@class='fr-ec-hint-text fr-ec-hint-text--standard fr-ec-hint-text--color-secondary fr-ec-text-align-left fr-ec-text-transform-normal']"},
+                                "path": {"price":"//p[@class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-primary-dark fr-ec-text-transform-normal' or @class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-promotional fr-ec-text-transform-normal']", "stock":"//div[@class='fr-ec-mb-spacer-8']//p[@class='fr-ec-hint-text fr-ec-hint-text--standard fr-ec-hint-text--color-secondary fr-ec-text-align-left fr-ec-text-transform-normal']"},
                             },
                         ]
                     }
