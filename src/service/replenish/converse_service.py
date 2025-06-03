@@ -85,7 +85,6 @@ def service():
                             log_util.error(error_msg)
                             # notify error with mail
                             mail_util.send_message("补货检查处理错误信息", error_msg)
-                            log_util.error(error_msg)
                     else:
                         log_util.info("没有数据写入到邮件")
                 except Exception as e:  # 捕获服务调用中的异常
