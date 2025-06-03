@@ -326,4 +326,28 @@
             },
         ]
     },
+    {
+        "brand": "gregory",
+        "targets":[
+            {
+                "host": "supersports",
+                "url": "https://www.supersports.com/",
+                "catalog": "backpacks",
+                "objects": [
+                    {
+                        "object": "price",
+                        # 1.商品
+                        "actions": [
+                            {
+                                "url": "%url%",
+                                "action_type": "dynamic",
+                                "action": "get",
+                                "path": {"stock":"//div[contains(@class,'button-block')]/button[text()='カートに追加']", "price":"//div[contains(@class, 'price-detail')]/strong"},
+                            },
+                        ]
+                    }
+                ]
+            },
+        ]
+    },
 ]
