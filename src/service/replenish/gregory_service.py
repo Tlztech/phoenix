@@ -4,7 +4,7 @@ import traceback
 import json
 
 from constant import brand, excel
-from service.common.supersports_common import sprider
+from service.common.gregory_common import sprider
 from util import log_util, excel_util, env_util, mail_util, common_utils
 
 
