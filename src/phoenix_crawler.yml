@@ -350,4 +350,28 @@
             },
         ]
     },
+    {
+        "brand": "crocs",
+        "targets":[
+            {
+                "host": "yahoo/fam",
+                "url": "https://store.shopping.yahoo.co.jp/famshoe/",
+                "catalog": "clothes",
+                "objects": [
+                    {
+                        "object": "price",
+                        # 1.商品
+                        "actions": [
+                            {
+                                "url": "%url%",
+                                "action_type": "dynamic",
+                                "action": "get",
+                                "path": {"color":"//div[contains(@class, 'styles_optionList')]/span[text()='カラー']/following-sibling::ul/li/label/div/span", "parent":"//div[contains(@class, 'styles_optionList')]/span[text()='サイズ']/following-sibling::ul/li/label/div", "size":"./span", "stock":"./p[contains(@class, 'stockText')]", "price":"//div[contains(@class, 'priceWrap')]/p[contains(@itemprop, 'price')]"},
+                            },
+                        ]
+                    }
+                ]
+            },
+        ]
+    },
 ]
