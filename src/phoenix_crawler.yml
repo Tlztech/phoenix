@@ -146,7 +146,7 @@
                                 "url": "https://www.patagonia.jp/search/?q=%item_code%",
                                 "action_type": "dynamic",
                                 "action": "click and get",
-                                "path": {"data-variation-group-id": "//li[@class='product-tile__bullet']/button", "color-button": "//li[@class='product-tile__bullet']/button", "item_url":"//div[contains(@class, 'product-tile__image') and contains(@class, 'active')]/a", "check-product-exists":"//div[@class='no-search-results-header']"},
+                                "path": {"data-variation-group-id": "//li[@class='product-tile__bullet']/button", "color-button": "//li[@class='product-tile__bullet']/button", "item_url":"//div[contains(@class, 'product-tile__cover') and contains(@data-color, '%color%')]/a", "check-product-exists":"//div[@class='no-search-results-header']"},
                                 # l_1size遍历，color
                                 "actions": [
                                     {

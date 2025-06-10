@@ -7,6 +7,7 @@ from lxml import etree
 from requests import RequestException, HTTPError, Timeout, TooManyRedirects, URLRequired
 
 from selenium import webdriver
+# from seleniumwire import webdriver
 from selenium.common import TimeoutException, ElementNotInteractableException
 from selenium.webdriver import Keys, ActionChains
 from selenium.webdriver.chrome.service import Service as ChromeService
@@ -85,7 +86,15 @@ def get_driver(mode='DEBUG'):
         options.add_argument('--headless')  # 无头模式运行浏览器
     options.add_argument(
         f'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36')
-    # # 禁用非必要资源加载（加速页面渲染）
+    # options.add_argument("--disable-blink-features=AutomationControlled")  # 禁用自动化控制特征:ml-citation{ref="4,7" data="citationList"}
+    # options.add_argument("--disable-blink-features")  # 关闭Blink引擎自动化标记:ml-citation{ref="1,7" data="citationList"}
+    # options.add_argument("--no-sandbox")  # 禁用沙盒模式减少特征暴露:ml-citation{ref="5" data="citationList"}
+    # options.add_experimental_option("excludeSwitches", ["enable-automation"])  # 移除"自动化控制"提示:ml-citation{ref="1,8" data="citationList"}
+    # options.add_experimental_option("useAutomationExtension", False)  # 禁用自动化扩展:ml-citation{ref="4,8" data="citationList"}
+    # options.add_argument('--disable-dev-shm-usage')
+    # options.add_argument('--disable-gpu')
+
+# # 禁用非必要资源加载（加速页面渲染）
     # options.add_experimental_option("prefs", {
     #     "profile.managed_default_content_settings.images": 2,  # 禁用图片
     #     "profile.managed_default_content_settings.javascript": 1  # 启用JS
@@ -96,6 +105,13 @@ def get_driver(mode='DEBUG'):
     options.add_argument("start-maximized")
     driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
     driver.implicitly_wait(10)
+    driver.execute_cdp_cmd(
+        "Page.addScriptToEvaluateOnNewDocument",
+        {"source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"}
+    )  # 彻底隐藏webdriver属性:ml-citation{ref="7,8" data="citationList"}
+    # driver.execute_cdp_cmd("Network.setUserAgentOverride", {
+    #     "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    # })
     return driver
 
 

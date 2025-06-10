@@ -57,7 +57,7 @@ def sprider(item_codes, targets):
                                         for color_element in color_elements:
                                             item_code_color = color_element.get_attribute(list(action['path'].keys())[0])
                                             if item_code_color == item_code:
-                                                color_element.click()
+                                                # color_element.click()
                                                 find_color = True
                                                 break
                                         if not find_color and color_elements:
@@ -65,7 +65,7 @@ def sprider(item_codes, targets):
                                             log_util.error(f"color不匹配有货商品,商品{sku_file}数据无法获取")
                                             break
                                         # 商品检索
-                                        current_path = action['path']['item_url']
+                                        current_path = action['path']['item_url'].replace('%color%', item_code.replace(code+'-', ''))
                                         element = driver.find_element(By.XPATH, current_path)
                                         item_url = element.get_attribute('href')
                                         item_data = {'item_code': item_code, 'url': item_url}
