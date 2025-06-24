@@ -52,7 +52,6 @@
                             {
                                 "url": "https://www.himaraya.co.jp/search?q=%item_code%",
                                 "action_type": "static",
-                                "result": "price",
                                 "action": "get",
                                 "path": {"price":"//*[@class='categoryList-List']/div[contains(@class, 'categoryList-List-content')]//p[@class='categoryList-List--info-price-sale']/text()",
                                         "color":"//*[@class='categoryList-List']/div[contains(@class, 'categoryList-List-content')]//p[@class='product-name']/text()"},
@@ -73,57 +72,42 @@
                 "objects": [
                     {
                         "object": "price",
-                        # 1.地域选择 2.商品检索
+                        # l_1 1.商品详细 2.color
                         "actions": [
                             {
-                                "url": "https://www.lululemon.co.jp/",
+                                "url": "%url%",
                                 "action_type": "dynamic",
-                                "action": "click",
-                                "path": {"location_optional":"//*[@id='countrySelectorModal']/div/div/div[1]/button"},
-                            },
-                            {
-                                "url": "",
-                                "action_type": "dynamic",
-                                "action": "input and enter",
-                                "path": {"%item_code%":"//div[@id='siteSearch']//*[@id='global-search-field']"},
-                                # l_1color遍历
+                                "action": "get",
+                                "path": {"valid-url": "//p[@class='hero-subtext' and text()='申し訳ありません。お探しのページが見つかりませんでした。']", "data-color-title": "//div[@class='color-group']//button[contains(@class, 'selected')]"},
+                                # l_2size遍历
                                 "actions": [
                                     {
                                         "url": "",
                                         "action_type": "dynamic",
                                         "action": "list",
-                                        "path": {"data-swatch-url": "//a[contains(@class, 'swatchAnchor')]", "title": "//a[contains(@class, 'swatchAnchor')]", "search-suggestions-tittle": "//h5[@class='search-suggestions-tittle']"},
-                                        # l_2size遍历
+                                        "path": {"aria-label": "//div[@id='size']/div/span/input[contains(@class, 'options-select') and not(contains(@class, 'disabled'))]", "value": "//div[@id='size']/div/span/input[contains(@class, 'options-select') and not(contains(@class, 'disabled'))]", "data-attr-value": "//div[@id='size']/div/span/input[contains(@class, 'options-select') and not(contains(@class, 'disabled'))]"},
+                                        # l_3sku api
                                         "actions": [
                                             {
-                                                "url": "%data-swatch-url%",
+                                                "url": "%value%",
                                                 "action_type": "dynamic",
-                                                "action": "list",
-                                                "path": {"aria-label": "//div[@id='size']/div/span/input[contains(@class, 'options-select') and not(contains(@class, 'disabled'))]", "value": "//div[@id='size']/div/span/input[contains(@class, 'options-select') and not(contains(@class, 'disabled'))]", "data-attr-value": "//div[@id='size']/div/span/input[contains(@class, 'options-select') and not(contains(@class, 'disabled'))]"},
-                                                # l_3sku api
+                                                "action": "get",
+                                                "path": {"sku": "//pre/text()"},
+                                                # l_4 stock api
                                                 "actions": [
                                                     {
-                                                        "url": "%value%",
+                                                        "url": "https://www.lululemon.co.jp/on/demandware.store/Sites-JP-Site/ja_JP/InStores-FindStores?lat=34.6654311&long=135.4580466&pid=%sku%",
                                                         "action_type": "dynamic",
                                                         "action": "get",
-                                                        "path": {"sku": "//pre/text()"},
-                                                        # l_4 stock api
-                                                        "actions": [
-                                                            {
-                                                                "url": "https://www.lululemon.co.jp/on/demandware.store/Sites-JP-Site/ja_JP/InStores-FindStores?lat=34.6654311&long=135.4580466&pid=%sku%",
-                                                                "action_type": "dynamic",
-                                                                "action": "get",
-                                                                # available:在庫ありonlyfewleft:在庫わずか
-                                                                "path": {"stock": "//pre/text()"},
-                                                            }
-                                                        ]
+                                                        # available:在庫ありonlyfewleft:在庫わずか
+                                                        "path": {"stock": "//pre/text()"},
                                                     }
                                                 ]
                                             }
                                         ]
                                     }
                                 ]
-                            },
+                            }
                         ]
                     },
                 ]

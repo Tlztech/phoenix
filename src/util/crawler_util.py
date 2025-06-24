@@ -86,7 +86,7 @@ def get_driver(mode='DEBUG'):
         options.add_argument('--headless')  # 无头模式运行浏览器
     options.add_argument(
         f'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36')
-    # options.add_argument("--disable-blink-features=AutomationControlled")  # 禁用自动化控制特征:ml-citation{ref="4,7" data="citationList"}
+    options.add_argument("--disable-blink-features=AutomationControlled")  # 禁用自动化控制特征:ml-citation{ref="4,7" data="citationList"}
     # options.add_argument("--disable-blink-features")  # 关闭Blink引擎自动化标记:ml-citation{ref="1,7" data="citationList"}
     # options.add_argument("--no-sandbox")  # 禁用沙盒模式减少特征暴露:ml-citation{ref="5" data="citationList"}
     # options.add_experimental_option("excludeSwitches", ["enable-automation"])  # 移除"自动化控制"提示:ml-citation{ref="1,8" data="citationList"}
@@ -117,3 +117,10 @@ def get_driver(mode='DEBUG'):
 
 def close_driver(driver: webdriver):
     driver.quit()
+
+
+def full_reset(driver, mode='DEBUG'):
+    """完全重置浏览器到初始状态"""
+    close_driver(driver)
+    new_driver = get_driver(mode)  # 创建新实例
+    return new_driver
