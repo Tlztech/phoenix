@@ -1,6 +1,7 @@
 import requests
 import chardet
 import html
+import undetected_chromedriver as uc
 
 from util import log_util
 from lxml import etree
@@ -89,7 +90,7 @@ def get_driver(mode='DEBUG'):
     options.add_argument("--disable-blink-features=AutomationControlled")  # 禁用自动化控制特征:ml-citation{ref="4,7" data="citationList"}
     # options.add_argument("--disable-blink-features")  # 关闭Blink引擎自动化标记:ml-citation{ref="1,7" data="citationList"}
     # options.add_argument("--no-sandbox")  # 禁用沙盒模式减少特征暴露:ml-citation{ref="5" data="citationList"}
-    # options.add_experimental_option("excludeSwitches", ["enable-automation"])  # 移除"自动化控制"提示:ml-citation{ref="1,8" data="citationList"}
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])  # 移除"自动化控制"提示:ml-citation{ref="1,8" data="citationList"}
     # options.add_experimental_option("useAutomationExtension", False)  # 禁用自动化扩展:ml-citation{ref="4,8" data="citationList"}
     # options.add_argument('--disable-dev-shm-usage')
     # options.add_argument('--disable-gpu')
@@ -124,3 +125,19 @@ def full_reset(driver, mode='DEBUG'):
     close_driver(driver)
     new_driver = get_driver(mode)  # 创建新实例
     return new_driver
+
+
+def get_undetected_driver(mode='DEBUG'):
+    driver = uc.Chrome(headless=False if mode == "DEBUG" else True)
+    return driver
+
+
+def close_undetected_driver(driver):
+    try:
+        driver.quit()
+    except Exception as e:
+        pass
+    finally:
+        driver.service.stop()
+
+

@@ -1,4 +1,4 @@
-import copy
+import copy, random
 import json
 import time
 import traceback
@@ -34,7 +34,8 @@ def sprider(item_codes, targets):
                             if action_l_1['action_type'] == 'dynamic':
                                 try:
                                     if not driver:
-                                        driver = crawler_util.get_driver(env_util.get_env('DRIVER_MODE'))
+                                        # driver = crawler_util.get_driver(env_util.get_env('DRIVER_MODE'))
+                                        driver = crawler_util.get_undetected_driver(env_util.get_env('DRIVER_MODE'))
                                         driver.maximize_window()
                                     if action_l_1['url'] and action_l_1['action'] == 'get':
                                         action_l_1['url'] = item_code
@@ -80,7 +81,7 @@ def sprider(item_codes, targets):
                                                             if 'actions' in action_l_2 and action_l_2['actions'] and len(action_l_2['actions']) > 0:
                                                                 sku_url = size_url.get('sku_url')
                                                                 for action_l_3 in action_l_2['actions']:
-                                                                    driver = crawler_util.full_reset(driver, env_util.get_env('DRIVER_MODE'))
+                                                                    # driver = crawler_util.full_reset(driver, env_util.get_env('DRIVER_MODE'))
                                                                     driver.get(sku_url)
                                                                     html_sku = driver.page_source.encode("utf-8", "ignore").decode("utf-8")
                                                                     tree = etree.HTML(html_sku)
@@ -106,8 +107,9 @@ def sprider(item_codes, targets):
                                                                                 if 'actions' in action_l_3 and action_l_3['actions'] and len(action_l_3['actions']) > 0:
                                                                                     for action_l_4 in action_l_3['actions']:
                                                                                         stock_url = action_l_4['url'].replace('%sku%', sku_id)
-                                                                                        driver = crawler_util.full_reset(driver, env_util.get_env('DRIVER_MODE'))
+                                                                                        # driver = crawler_util.full_reset(driver, env_util.get_env('DRIVER_MODE'))
                                                                                         driver.get(stock_url)
+                                                                                        time.sleep(random.uniform(0.1, 0.5))
                                                                                         driver.refresh()
                                                                                         stock_html = driver.page_source.encode("utf-8", "ignore").decode("utf-8")
                                                                                         tree = etree.HTML(stock_html)
@@ -186,5 +188,6 @@ def sprider(item_codes, targets):
         log_util.error(f"发生未知错误，数据处理停止: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
     finally:
         if driver:
-            crawler_util.close_driver(driver)
+            # crawler_util.close_driver(driver)
+            crawler_util.close_undetected_driver(driver)
         log_util.info(json.dumps(output_data_list, indent=4, ensure_ascii=False))
