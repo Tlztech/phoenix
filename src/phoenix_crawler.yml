@@ -374,7 +374,7 @@
                                 "url": "%url%",
                                 "action_type": "dynamic",
                                 "action": "get",
-                                "path": {"iframe":"buyee-bcFrame", "close_iframe":"bcIntro__closeBtn", "close":"//section/button", "stock":"//div[@class='block-variation-stock-info']"},
+                                "path": {"iframe":"buyee-bcFrame", "close_iframe":"bcIntro__closeBtn", "close":"//section/button", "stock":"//div[@class='block-variation-stock-info']", "size":"//div[@class='block-variation-size-info ']"},
                             },
                         ]
                     }

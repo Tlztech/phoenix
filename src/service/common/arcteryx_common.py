@@ -36,6 +36,7 @@ def sprider(item_codes, targets):
                                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                                 if action['action'] == "get":
                                     stock = ''
+                                    size = ''
                                     try:
                                         current_path = action['path']['iframe']
                                         iframe = WebDriverWait(driver, 10).until(
@@ -72,7 +73,19 @@ def sprider(item_codes, targets):
                                     except NoSuchElementException as nsee:
                                         log_util.error(f"商品{item_code}库存获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
                                         stock = ''
-                                    item_data = {'url': item_code, '官网库存': stock}
+                                    try:
+                                        current_path = action['path']['size']
+                                        element = WebDriverWait(driver, 10).until(
+                                            EC.visibility_of_element_located((By.XPATH, current_path))
+                                        )
+                                        size = element.text
+                                    except TimeoutException as te:
+                                        log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                        size = ''
+                                    except NoSuchElementException as nsee:
+                                        log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                        size = ''
+                                    item_data = {'url': item_code, '官网库存': stock, 'size': size}
                                     item_data_list.append(copy.deepcopy(item_data))
                         output_data_list.extend(item_data_list)
                         log_util.info(f"商品{item_code}脚本processed")
