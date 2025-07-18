@@ -399,6 +399,25 @@
                     }
                 ]
             },
+            {
+                "host": "yahoo/TOKIA",
+                "url": "https://store.shopping.yahoo.co.jp/zakka-tokia",
+                "catalog": "Bag",
+                "objects": [
+                    {
+                        "object": "price",
+                        # 1.商品
+                        "actions": [
+                            {
+                                "url": "%url%",
+                                "action_type": "dynamic",
+                                "action": "get",
+                                "path": {"stock":"//form[@name='addCart']//button/span/span", "price":"//form[@name='addCart']//p[@itemprop='price']"},
+                            },
+                        ]
+                    }
+                ]
+            },
         ]
     },
 ]

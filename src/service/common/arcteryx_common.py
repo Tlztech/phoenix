@@ -91,7 +91,7 @@ def sprider(item_codes, targets):
                             output_data_list.extend(item_data_list)
                             log_util.info(f"商品{item_code}脚本processed")
                         log_util.info(f"网站{target}脚本processed")
-                    else:
+                    elif target == 'rakuten/WAIPER':
                         log_util.info(f"网站{target}脚本processing")
                         for item_code in item_codes:
                             actions = yaml_util.get_object_price_actions_top(brand=brand.ARCTERYX_BRAND, host=target)
@@ -142,6 +142,53 @@ def sprider(item_codes, targets):
                                             log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
                                             color = ''
                                         item_data = {'url': item_code, '官网库存': stock, 'size': size}
+                                        item_data_list.append(copy.deepcopy(item_data))
+                            output_data_list.extend(item_data_list)
+                            log_util.info(f"商品{item_code}脚本processed")
+                        log_util.info(f"网站{target}脚本processed")
+                    elif target == 'yahoo/TOKIA':
+                        log_util.info(f"网站{target}脚本processing")
+                        for item_code in item_codes:
+                            actions = yaml_util.get_object_price_actions_top(brand=brand.ARCTERYX_BRAND, host=target)
+                            item_data_list = []
+                            log_util.info(f"商品{item_code}脚本processing")
+                            for action in actions:
+                                if action['action_type'] == 'dynamic':
+                                    if not driver:
+                                        driver = crawler_util.get_driver("INFO")
+                                    driver.delete_all_cookies()
+                                    action['url'] = item_code
+                                    driver.get(item_code)
+                                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                                    if action['action'] == "get":
+                                        stock = ''
+                                        price = ''
+                                        try:
+                                            current_path = action['path']['stock']
+                                            element = WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_element_located((By.XPATH, current_path))
+                                            )
+                                            if element.text == '在庫がありません':
+                                                stock = '在庫なし'
+                                            elif element.text == 'カートに入れる':
+                                                stock = '在庫有り'
+                                            else:
+                                                stock = element.text
+                                        except TimeoutException:
+                                            stock = ''
+                                        try:
+                                            current_path = action['path']['price']
+                                            element = WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_element_located((By.XPATH, current_path))
+                                            )
+                                            price = element.text
+                                        except TimeoutException as te:
+                                            log_util.error(f"商品{item_code}价格获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                            price = ''
+                                        except NoSuchElementException as nsee:
+                                            log_util.error(f"商品{item_code}价格获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                            price = ''
+                                        item_data = {'url': item_code, '官网库存': stock, 'price': price}
                                         item_data_list.append(copy.deepcopy(item_data))
                             output_data_list.extend(item_data_list)
                             log_util.info(f"商品{item_code}脚本processed")
