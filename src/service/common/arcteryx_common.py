@@ -21,75 +21,131 @@ def sprider(item_codes, targets):
             arcteryx_hosts = yaml_util.get_brand_hosts(brand.ARCTERYX_BRAND)
             for target in targets:
                 if target in arcteryx_hosts:
-                    log_util.info(f"网站{target}脚本processing")
-                    for item_code in item_codes:
-                        actions = yaml_util.get_object_price_actions_top(brand=brand.ARCTERYX_BRAND, host=target)
-                        item_data_list = []
-                        log_util.info(f"商品{item_code}脚本processing")
-                        for action in actions:
-                            if action['action_type'] == 'dynamic':
-                                if not driver:
-                                    driver = crawler_util.get_driver("INFO")
-                                driver.delete_all_cookies()
-                                action['url'] = item_code
-                                driver.get(item_code)
-                                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                                if action['action'] == "get":
-                                    stock = ''
-                                    size = ''
-                                    try:
-                                        current_path = action['path']['iframe']
-                                        iframe = WebDriverWait(driver, 10).until(
-                                            EC.visibility_of_element_located((By.ID, current_path))
-                                        )
-                                        driver.switch_to.frame(iframe)
-                                        current_path = action['path']['close_iframe']
-                                        close_btn = WebDriverWait(driver, 30).until(
-                                            EC.visibility_of_element_located((By.CLASS_NAME, current_path))
-                                        )
-                                        close_btn.click()
-                                        time.sleep(1)
-                                        driver.switch_to.default_content()
-                                    except TimeoutException:
-                                        pass
-                                    try:
-                                        current_path = action['path']['close']
-                                        close_btn = WebDriverWait(driver, 30).until(
-                                            EC.visibility_of_element_located((By.XPATH, current_path))
-                                        )
-                                        close_btn.click()
-                                        time.sleep(1)
-                                    except TimeoutException:
-                                        pass
-                                    try:
-                                        current_path = action['path']['stock']
-                                        element = WebDriverWait(driver, 10).until(
-                                            EC.visibility_of_element_located((By.XPATH, current_path))
-                                        )
-                                        stock = element.text
-                                    except TimeoutException as te:
-                                        log_util.error(f"商品{item_code}库存获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                    if target == "ARKnets":
+                        log_util.info(f"网站{target}脚本processing")
+                        for item_code in item_codes:
+                            actions = yaml_util.get_object_price_actions_top(brand=brand.ARCTERYX_BRAND, host=target)
+                            item_data_list = []
+                            log_util.info(f"商品{item_code}脚本processing")
+                            for action in actions:
+                                if action['action_type'] == 'dynamic':
+                                    if not driver:
+                                        driver = crawler_util.get_driver("INFO")
+                                    driver.delete_all_cookies()
+                                    action['url'] = item_code
+                                    driver.get(item_code)
+                                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                                    if action['action'] == "get":
                                         stock = ''
-                                    except NoSuchElementException as nsee:
-                                        log_util.error(f"商品{item_code}库存获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                        size = ''
+                                        try:
+                                            current_path = action['path']['iframe']
+                                            iframe = WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_element_located((By.ID, current_path))
+                                            )
+                                            driver.switch_to.frame(iframe)
+                                            current_path = action['path']['close_iframe']
+                                            close_btn = WebDriverWait(driver, 30).until(
+                                                EC.visibility_of_element_located((By.CLASS_NAME, current_path))
+                                            )
+                                            close_btn.click()
+                                            time.sleep(1)
+                                            driver.switch_to.default_content()
+                                        except TimeoutException:
+                                            pass
+                                        try:
+                                            current_path = action['path']['close']
+                                            close_btn = WebDriverWait(driver, 30).until(
+                                                EC.visibility_of_element_located((By.XPATH, current_path))
+                                            )
+                                            close_btn.click()
+                                            time.sleep(1)
+                                        except TimeoutException:
+                                            pass
+                                        try:
+                                            current_path = action['path']['stock']
+                                            element = WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_element_located((By.XPATH, current_path))
+                                            )
+                                            stock = element.text
+                                        except TimeoutException as te:
+                                            log_util.error(f"商品{item_code}库存获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                            stock = ''
+                                        except NoSuchElementException as nsee:
+                                            log_util.error(f"商品{item_code}库存获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                            stock = ''
+                                        try:
+                                            current_path = action['path']['size']
+                                            element = WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_element_located((By.XPATH, current_path))
+                                            )
+                                            size = element.text
+                                        except TimeoutException as te:
+                                            log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                            size = ''
+                                        except NoSuchElementException as nsee:
+                                            log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                            size = ''
+                                        item_data = {'url': item_code, '官网库存': stock, 'size': size}
+                                        item_data_list.append(copy.deepcopy(item_data))
+                            output_data_list.extend(item_data_list)
+                            log_util.info(f"商品{item_code}脚本processed")
+                        log_util.info(f"网站{target}脚本processed")
+                    else:
+                        log_util.info(f"网站{target}脚本processing")
+                        for item_code in item_codes:
+                            actions = yaml_util.get_object_price_actions_top(brand=brand.ARCTERYX_BRAND, host=target)
+                            item_data_list = []
+                            log_util.info(f"商品{item_code}脚本processing")
+                            for action in actions:
+                                if action['action_type'] == 'dynamic':
+                                    if not driver:
+                                        driver = crawler_util.get_driver("INFO")
+                                    driver.delete_all_cookies()
+                                    action['url'] = item_code
+                                    driver.get(item_code)
+                                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                                    if action['action'] == "get":
                                         stock = ''
-                                    try:
-                                        current_path = action['path']['size']
-                                        element = WebDriverWait(driver, 10).until(
-                                            EC.visibility_of_element_located((By.XPATH, current_path))
-                                        )
-                                        size = element.text
-                                    except TimeoutException as te:
-                                        log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
                                         size = ''
-                                    except NoSuchElementException as nsee:
-                                        log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
-                                        size = ''
-                                    item_data = {'url': item_code, '官网库存': stock, 'size': size}
-                                    item_data_list.append(copy.deepcopy(item_data))
-                        output_data_list.extend(item_data_list)
-                        log_util.info(f"商品{item_code}脚本processed")
-                    log_util.info(f"网站{target}脚本processed")
+                                        color = ''
+                                        try:
+                                            current_path = action['path']['out-of-stock']
+                                            WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_element_located((By.XPATH, current_path))
+                                            )
+                                            stock = '在庫なし'
+                                        except TimeoutException:
+                                            stock = '在庫有り'
+                                        try:
+                                            current_path = action['path']['size']
+                                            element = WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_element_located((By.XPATH, current_path))
+                                            )
+                                            size = element.text
+                                        except TimeoutException as te:
+                                            log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                            size = ''
+                                        except NoSuchElementException as nsee:
+                                            log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                            size = ''
+                                        try:
+                                            current_path = action['path']['color']
+                                            element = WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_element_located((By.XPATH, current_path))
+                                            )
+                                            color = element.text
+                                        except TimeoutException as te:
+                                            log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                            color = ''
+                                        except NoSuchElementException as nsee:
+                                            log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                            color = ''
+                                        item_data = {'url': item_code, '官网库存': stock, 'size': size}
+                                        item_data_list.append(copy.deepcopy(item_data))
+                            output_data_list.extend(item_data_list)
+                            log_util.info(f"商品{item_code}脚本processed")
+                        log_util.info(f"网站{target}脚本processed")
                 else:
                     log_util.info(f"{brand.ARCTERYX_BRAND}品牌没有{env_util.get_env('EXCEL_INPUT_FILE')}文件指定{target}网站脚本定义")
                 return output_data_list

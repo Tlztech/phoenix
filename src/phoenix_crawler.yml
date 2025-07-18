@@ -380,6 +380,25 @@
                     }
                 ]
             },
+            {
+                "host": "rakuten/WAIPER",
+                "url": "https://www.rakuten.co.jp/",
+                "catalog": "clothes",
+                "objects": [
+                    {
+                        "object": "price",
+                        # 1.商品
+                        "actions": [
+                            {
+                                "url": "%url%",
+                                "action_type": "dynamic",
+                                "action": "get",
+                                "path": {"out-of-stock":"//button[contains(@class, 'selected') and .//div[text()='売り切れ']]", "size":"//span[./div/span[text()='サイズ']]/div[2]/span", "color":"//span[./div/span[text()='カラー']]/div[2]/span"},
+                            },
+                        ]
+                    }
+                ]
+            },
         ]
     },
 ]
