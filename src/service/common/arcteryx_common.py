@@ -136,12 +136,12 @@ def sprider(item_codes, targets):
                                             )
                                             color = element.text
                                         except TimeoutException as te:
-                                            log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                            log_util.error(f"商品{item_code}color获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
                                             color = ''
                                         except NoSuchElementException as nsee:
-                                            log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                            log_util.error(f"商品{item_code}color获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
                                             color = ''
-                                        item_data = {'url': item_code, '官网库存': stock, 'size': size}
+                                        item_data = {'url': item_code, '官网库存': stock, 'size': size, 'color': color}
                                         item_data_list.append(copy.deepcopy(item_data))
                             output_data_list.extend(item_data_list)
                             log_util.info(f"商品{item_code}脚本processed")
