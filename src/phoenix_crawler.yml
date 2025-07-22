@@ -420,4 +420,28 @@
             },
         ]
     },
+    {
+        "brand": "hokaoneone",
+        "targets":[
+            {
+                "host": "rakuten/sneaker-bouz",
+                "url": "https://www.rakuten.co.jp/",
+                "catalog": "clothes",
+                "objects": [
+                    {
+                        "object": "price",
+                        # 1.商品
+                        "actions": [
+                            {
+                                "url": "%url%",
+                                "action_type": "dynamic",
+                                "action": "get",
+                                "path": {"out-of-stock":"//button[contains(@class, 'selected') and .//div[contains(@class, 'text-display') and contains(text(), '再入荷')]]", "size":"//span[./div/span[text()='サイズ(cm)']]/div[2]/span", "price":"//table[@id='rakutenLimitedId_cart']/tbody/tr[2]//div[contains(@class, 'value')]"},
+                            },
+                        ]
+                    }
+                ]
+            },
+        ]
+    },
 ]
