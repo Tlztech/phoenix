@@ -444,4 +444,28 @@
             },
         ]
     },
+    {
+        "brand": "keen",
+        "targets":[
+            {
+                "host": "murasaki",
+                "url": "https://www.murasaki.jp//",
+                "catalog": "clothes",
+                "objects": [
+                    {
+                        "object": "price",
+                        # 1.商品
+                        "actions": [
+                            {
+                                "url": "%url%",
+                                "action_type": "dynamic",
+                                "action": "get",
+                                "path": {"size-list":"//ul[@class='cart-area--size__list']/li", "color":"//h3[@class='cart-area__text--heading']", "size":"data-size", "stock":"data-stock-state"},
+                            },
+                        ]
+                    }
+                ]
+            },
+        ]
+    },
 ]
