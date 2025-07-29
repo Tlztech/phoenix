@@ -48,22 +48,24 @@ def service():
                     output_data_list = sprider(common_utils.deduplicate(item_codes), targets)
                     if output_data_list and len(output_data_list) > 0:
                         output_mail_list = []
-                        item_codes = []
+                        url_list = []
                         size_list = []
                         error_list = []
-                        for index, output_data in enumerate(output_data_list):
-                            for index, url in enumerate(item_codes):
+
+                        for index, url in enumerate(item_codes):
+                            for output_data in output_data_list:
                                 if output_data['url'] == url and sizes[index] and output_data['size'] and sizes[index] == output_data['size']:
                                     if output_data['官网库存']:
                                         if output_data['官网库存'] != '在庫なし':
                                             output_mail_list.append(output_data)
                                         else:
-                                            item_codes.append(output_data['url'])
+                                            url_list.append(output_data['url'])
                                             size_list.append(sizes[index])
                                     else:
                                         error_list.append(f"url {output_data['url']},size {sizes[index]}")
                                     break
                         sizes = copy.deepcopy(size_list)
+                        item_codes = copy.deepcopy(url_list)
                         # mail
                         output_mail_str = json.dumps(output_mail_list, indent=4, ensure_ascii=False)
                         log_util.info(f"output_mail_list:{output_mail_str}")
