@@ -55,7 +55,7 @@ def service():
                     output_data_list = sprider(common_utils.deduplicate(item_codes), targets)
                     if output_data_list and len(output_data_list) > 0:
                         output_mail_list = []
-                        item_codes = []
+                        url_list = []
                         price_list = []
                         error_list = []
                         size_list = []
@@ -67,7 +67,7 @@ def service():
                                     elif int(prices[index]) >= common_utils.prices_formatter(output_data['price']) and output_data['官网库存'] and output_data['官网库存'] != '売り切れ':
                                         output_mail_list.append(output_data)
                                     else:
-                                        item_codes.append(output_data['url'])
+                                        url_list.append(output_data['url'])
                                         price_list.append(prices[index])
                                 else:
                                     if output_data['官网库存'] and output_data['官网库存'] != '売り切れ':
@@ -76,33 +76,39 @@ def service():
                                         item_codes.append(output_data['url'])
                                         price_list.append(prices[index])
                             prices = copy.deepcopy(price_list)
+                            item_codes = copy.deepcopy(url_list)
                         elif sizes:
-                            for index, output_data in enumerate(output_data_list):
-                                for index, url in enumerate(item_codes):
+                            for index, url in enumerate(item_codes):
+                                for output_data in output_data_list:
                                     if output_data['url'] == url and sizes[index] and output_data['size'] and sizes[index] == output_data['size']:
                                         if output_data['官网库存']:
                                             if output_data['官网库存'] != '売り切れ':
                                                 output_mail_list.append(output_data)
                                             else:
-                                                item_codes.append(output_data['url'])
+                                                url_list.append(output_data['url'])
                                                 size_list.append(sizes[index])
                                         else:
                                             error_list.append(f"url {output_data['url']},size {sizes[index]}")
+                                    else:
+                                        print(f"size:{sizes[index]} {output_data['size']},url:{url} {output_data['url']}")
                             sizes = copy.deepcopy(size_list)
+                            item_codes = copy.deepcopy(url_list)
                         # mail
                         output_mail_str = json.dumps(output_mail_list, indent=4, ensure_ascii=False)
                         log_util.info(f"output_mail_list:{output_mail_str}")
                         if output_mail_list:
                             byte_data = common_utils.generate_excel_friendly_csv(common_utils.transform_dict_to_list(output_mail_list))
                             log_util.info(f"mail:{bytes.decode(byte_data)}")
-                            # mail_util.send_csv_attachment("补货检查", byte_data)
+                            mail_util.send_csv_attachment("补货检查", byte_data)
                         if error_list:
                             error_msg = f"价格获取失败，请确认这些商品网页{':'.join(error_list)}"
                             log_util.error(error_msg)
                             # notify error with mail
-                            # mail_util.send_message("补货检查处理错误信息", error_msg)
+                            mail_util.send_message("补货检查处理错误信息", error_msg)
                     else:
                         log_util.info("没有数据写入到邮件")
+                    print(item_codes)
+                    print(sizes)
                 except Exception as e:  # 捕获服务调用中的异常
                     if interval == 0:
                         error_msg = f"脚本执行失败, 处理停止: {''.join(traceback.format_exception(None, e, e.__traceback__))}"
