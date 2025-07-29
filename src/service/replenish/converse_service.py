@@ -14,6 +14,7 @@ def service():
     targets = excel_util.get_data_list_no_none(excel.COLUMNS_NAMES.index('target'), excel.COLUMNS_NAMES)
     intervals = excel_util.get_data_list_no_none(excel.COLUMNS_NAMES.index('interval'), excel.COLUMNS_NAMES)
     prices = excel_util.get_data_list_no_none(excel.COLUMNS_NAMES.index('price'), excel.COLUMNS_NAMES)
+    sizes = excel_util.get_data_list_no_none(excel.COLUMNS_NAMES.index('size'), excel.COLUMNS_NAMES)
     if not item_codes:
         error_msg = f"{env_util.get_env('EXCEL_INPUT_FILE')}文件数据不完整没有item_code，数据处理停止"
         log_util.error(error_msg)
@@ -26,12 +27,12 @@ def service():
         # notify error with mail
         mail_util.send_message("补货检查处理错误信息", error_msg)
         log_util.info(f"品牌{brand.CONVERSE_BRAND}补货检查脚本processed")
-    elif not prices:
-        error_msg = f"{env_util.get_env('EXCEL_INPUT_FILE')}文件数据不完整没有price，数据处理停止"
-        log_util.error(error_msg)
-        # notify error with mail
-        mail_util.send_message("补货检查处理错误信息", error_msg)
-        log_util.info(f"品牌{brand.CONVERSE_BRAND}补货检查脚本processed")
+    # elif not prices:
+    #     error_msg = f"{env_util.get_env('EXCEL_INPUT_FILE')}文件数据不完整没有price，数据处理停止"
+    #     log_util.error(error_msg)
+    #     # notify error with mail
+    #     mail_util.send_message("补货检查处理错误信息", error_msg)
+    #     log_util.info(f"品牌{brand.CONVERSE_BRAND}补货检查脚本processed")
     else:
         if not intervals:
             interval = 0
@@ -51,40 +52,55 @@ def service():
         try:
             while interval >= 0:
                 try:
-                    output_data_list = sprider(item_codes, targets)
+                    output_data_list = sprider(common_utils.deduplicate(item_codes), targets)
                     if output_data_list and len(output_data_list) > 0:
                         output_mail_list = []
                         item_codes = []
                         price_list = []
-                        error_price_list = []
-                        for index, output_data in enumerate(output_data_list):
-                            if prices[index] and int(prices[index]) > 0:
-                                if not output_data['price']:
-                                    error_price_list.append(output_data['url'])
-                                elif int(prices[index]) >= common_utils.prices_formatter(output_data['price']) and output_data['官网库存'] and output_data['官网库存'] != '売り切れ':
-                                    output_mail_list.append(output_data)
+                        error_list = []
+                        size_list = []
+                        if prices:
+                            for index, output_data in enumerate(output_data_list):
+                                if prices[index] and int(prices[index]) > 0:
+                                    if not output_data['price']:
+                                        error_list.append(output_data['url'])
+                                    elif int(prices[index]) >= common_utils.prices_formatter(output_data['price']) and output_data['官网库存'] and output_data['官网库存'] != '売り切れ':
+                                        output_mail_list.append(output_data)
+                                    else:
+                                        item_codes.append(output_data['url'])
+                                        price_list.append(prices[index])
                                 else:
-                                    item_codes.append(output_data['url'])
-                                    price_list.append(prices[index])
-                            else:
-                                if output_data['官网库存'] and output_data['官网库存'] != '売り切れ':
-                                    output_mail_list.append(output_data)
-                                else:
-                                    item_codes.append(output_data['url'])
-                                    price_list.append(prices[index])
-                        prices = copy.deepcopy(price_list)
+                                    if output_data['官网库存'] and output_data['官网库存'] != '売り切れ':
+                                        output_mail_list.append(output_data)
+                                    else:
+                                        item_codes.append(output_data['url'])
+                                        price_list.append(prices[index])
+                            prices = copy.deepcopy(price_list)
+                        elif sizes:
+                            for index, output_data in enumerate(output_data_list):
+                                for index, url in enumerate(item_codes):
+                                    if output_data['url'] == url and sizes[index] and output_data['size'] and sizes[index] == output_data['size']:
+                                        if output_data['官网库存']:
+                                            if output_data['官网库存'] != '売り切れ':
+                                                output_mail_list.append(output_data)
+                                            else:
+                                                item_codes.append(output_data['url'])
+                                                size_list.append(sizes[index])
+                                        else:
+                                            error_list.append(f"url {output_data['url']},size {sizes[index]}")
+                            sizes = copy.deepcopy(size_list)
                         # mail
                         output_mail_str = json.dumps(output_mail_list, indent=4, ensure_ascii=False)
                         log_util.info(f"output_mail_list:{output_mail_str}")
                         if output_mail_list:
                             byte_data = common_utils.generate_excel_friendly_csv(common_utils.transform_dict_to_list(output_mail_list))
                             log_util.info(f"mail:{bytes.decode(byte_data)}")
-                            mail_util.send_csv_attachment("补货检查", byte_data)
-                        if error_price_list:
-                            error_msg = f"价格获取失败，请确认这些商品网页{':'.join(error_price_list)}"
+                            # mail_util.send_csv_attachment("补货检查", byte_data)
+                        if error_list:
+                            error_msg = f"价格获取失败，请确认这些商品网页{':'.join(error_list)}"
                             log_util.error(error_msg)
                             # notify error with mail
-                            mail_util.send_message("补货检查处理错误信息", error_msg)
+                            # mail_util.send_message("补货检查处理错误信息", error_msg)
                     else:
                         log_util.info("没有数据写入到邮件")
                 except Exception as e:  # 捕获服务调用中的异常

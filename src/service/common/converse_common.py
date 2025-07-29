@@ -1,4 +1,5 @@
 import time
+import re
 
 import copy
 import json
@@ -21,46 +22,124 @@ def sprider(item_codes, targets):
             converse_hosts = yaml_util.get_brand_hosts(brand.CONVERSE_BRAND)
             for target in targets:
                 if target in converse_hosts:
-                    log_util.info(f"网站{target}脚本processing")
-                    for item_code in item_codes:
-                        actions = yaml_util.get_object_price_actions_top(brand=brand.CONVERSE_BRAND, host=target)
-                        item_data_list = []
-                        log_util.info(f"商品{item_code}脚本processing")
-                        for action in actions:
-                            if action['action_type'] == 'dynamic':
-                                if not driver:
-                                    driver = crawler_util.get_driver("INFO")
-                                driver.delete_all_cookies()
-                                action['url'] = item_code
-                                driver.get(item_code)
-                                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                                if action['action'] == "get":
-                                    try:
-                                        current_path = action['path']['parent']
-                                        element = WebDriverWait(driver, 10).until(
-                                            EC.visibility_of_element_located((By.XPATH, current_path))
-                                        )
-                                    except TimeoutException as te:
-                                        log_util.error(f"商品{item_code}价格，库存获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
-                                        price = ''
+                    if target == "rakuten/abc-mart":
+                        log_util.info(f"网站{target}脚本processing")
+                        for item_code in item_codes:
+                            actions = yaml_util.get_object_price_actions_top(brand=brand.CONVERSE_BRAND, host=target)
+                            item_data_list = []
+                            log_util.info(f"商品{item_code}脚本processing")
+                            for action in actions:
+                                if action['action_type'] == 'dynamic':
+                                    if not driver:
+                                        driver = crawler_util.get_driver("INFO")
+                                    driver.delete_all_cookies()
+                                    action['url'] = item_code
+                                    driver.get(item_code)
+                                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                                    if action['action'] == "get":
+                                        try:
+                                            current_path = action['path']['parent']
+                                            element = WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_element_located((By.XPATH, current_path))
+                                            )
+                                        except TimeoutException as te:
+                                            log_util.error(f"商品{item_code}价格，库存获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                            price = ''
+                                            stock = ''
+                                        if element:
+                                            try:
+                                                current_path = action['path']['price']
+                                                price = element.find_element(By.XPATH, current_path).text
+                                            except NoSuchElementException as nsee:
+                                                log_util.error(f"商品{item_code}价格获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                                price = ''
+                                            try:
+                                                current_path = action['path']['stock']
+                                                stock = element.find_element(By.XPATH, current_path).text
+                                            except NoSuchElementException as nsee:
+                                                stock = '有货'
+                                        item_data = {'url': item_code, '官网库存': stock, 'price': price}
+                                        item_data_list.append(copy.deepcopy(item_data))
+                            output_data_list.extend(item_data_list)
+                            log_util.info(f"商品{item_code}脚本processed")
+                        log_util.info(f"网站{target}脚本processed")
+                    elif target == 'yahoo/ZOZOTOWN':
+                        log_util.info(f"网站{target}脚本processing")
+                        for item_code in item_codes:
+                            actions = yaml_util.get_object_price_actions_top(brand=brand.CONVERSE_BRAND, host=target)
+                            item_data_list = []
+                            log_util.info(f"商品{item_code}脚本processing")
+                            for action in actions:
+                                if action['action_type'] == 'dynamic':
+                                    if not driver:
+                                        driver = crawler_util.get_driver("INFO")
+                                    driver.delete_all_cookies()
+                                    action['url'] = item_code
+                                    driver.get(item_code)
+                                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                                    if action['action'] == "get":
                                         stock = ''
-                                    if element:
+                                        size = ''
+                                        color = ''
+                                        price = ''
+                                        try:
+                                            current_path = action['path']['color']
+                                            element = WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_element_located((By.XPATH, current_path))
+                                            )
+                                            color = element.text
+                                        except TimeoutException as te:
+                                            log_util.error(f"商品{item_code}color获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                            color = ''
+                                        except NoSuchElementException as nsee:
+                                            log_util.error(f"商品{item_code}color获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                            color = ''
                                         try:
                                             current_path = action['path']['price']
-                                            price = element.find_element(By.XPATH, current_path).text
+                                            element = WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_element_located((By.XPATH, current_path))
+                                            )
+                                            price = element.text
+                                        except TimeoutException as te:
+                                            log_util.error(f"商品{item_code}价格获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                            price = ''
                                         except NoSuchElementException as nsee:
                                             log_util.error(f"商品{item_code}价格获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
                                             price = ''
                                         try:
-                                            current_path = action['path']['stock']
-                                            stock = element.find_element(By.XPATH, current_path).text
-                                        except NoSuchElementException as nsee:
-                                            stock = '有货'
-                                    item_data = {'url': item_code, '官网库存': stock, 'price': price}
-                                    item_data_list.append(copy.deepcopy(item_data))
-                        output_data_list.extend(item_data_list)
-                        log_util.info(f"商品{item_code}脚本processed")
-                    log_util.info(f"网站{target}脚本processed")
+                                            current_path = action['path']['parent']
+                                            elements = WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_all_elements_located((By.XPATH, current_path))
+                                            )
+                                            for element in elements:
+                                                size = ''
+                                                stock = ''
+                                                try:
+                                                    current_path = action['path']['size']
+                                                    size = element.find_element(By.XPATH, current_path).text
+                                                    pattern = r'(\d+\.?\d*cm)'
+                                                    match = re.search(pattern, size)
+                                                    if match:
+                                                        size = match.group(1)
+                                                except NoSuchElementException as nsee:
+                                                    log_util.error(f"商品{item_code}size获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                                    size = ''
+                                                try:
+                                                    current_path = action['path']['stock']
+                                                    stock = element.find_element(By.XPATH, current_path).text
+                                                    if stock == '在庫なし':
+                                                        stock = '売り切れ'
+                                                except NoSuchElementException as nsee:
+                                                    stock = '在庫有り'
+                                                item_data = {'url': item_code, '官网库存': stock, 'size': size, 'color': color, 'price': price}
+                                                item_data_list.append(copy.deepcopy(item_data))
+                                        except TimeoutException:
+                                            log_util.error(f"商品{item_code} size list获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                            item_data = {'url': item_code, '官网库存': stock, 'size': size, 'color': color, 'price': price}
+                                            item_data_list.append(copy.deepcopy(item_data))
+                            output_data_list.extend(item_data_list)
+                            log_util.info(f"商品{item_code}脚本processed")
+                        log_util.info(f"网站{target}脚本processed")
                 else:
                     log_util.info(f"{brand.CONVERSE_BRAND}品牌没有{env_util.get_env('EXCEL_INPUT_FILE')}文件指定{target}网站脚本定义")
                 return output_data_list

@@ -236,6 +236,25 @@
                     }
                 ]
             },
+            {
+                "host": "yahoo/ZOZOTOWN",
+                "url": "https://www.rakuten.co.jp/",
+                "catalog": "clothes",
+                "objects": [
+                    {
+                        "object": "price",
+                        # 1.商品
+                        "actions": [
+                            {
+                                "url": "%url%",
+                                "action_type": "dynamic",
+                                "action": "get",
+                                "path": {"color":"//div[span[text()='カラー']]/ul/li[contains(@class, 'styles_isSelected')]//span", "price":"//div[@id='prcdsp']//p[@itemprop='price']", "parent":"//div[span[text()='サイズ']]/ul/li", "size":".//span", "stock":".//p[1]"},
+                            },
+                        ]
+                    }
+                ]
+            },
         ]
     },
     {
