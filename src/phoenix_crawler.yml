@@ -479,7 +479,7 @@
                                 "url": "%url%",
                                 "action_type": "dynamic",
                                 "action": "get",
-                                "path": {"size-list":"//ul[@class='cart-area--size__list']/li", "color":"//h3[@class='cart-area__text--heading' and ./b[text()='カラー：']]", "size":"data-size", "stock":"data-stock-state"},
+                                "path": {"size-list":"//ul[@class='cart-area--size__list']/li", "color":"//div[@class='cart-area--add__status-text js-contentArea-message']/span", "size":"data-size", "stock":"data-stock-state"},
                             },
                         ]
                     }
