@@ -30,7 +30,7 @@ def sprider(item_codes, targets):
                         for action in actions:
                             if action['action_type'] == 'dynamic':
                                 if not driver:
-                                    driver = crawler_util.get_driver()
+                                    driver = crawler_util.get_driver("INFO")
                                 driver.delete_all_cookies()
                                 action['url'] = item_code
                                 driver.get(item_code)
