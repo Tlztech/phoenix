@@ -89,8 +89,6 @@ def service():
                                                 size_list.append(sizes[index])
                                         else:
                                             error_list.append(f"url {output_data['url']},size {sizes[index]}")
-                                    else:
-                                        print(f"size:{sizes[index]} {output_data['size']},url:{url} {output_data['url']}")
                             sizes = copy.deepcopy(size_list)
                             item_codes = copy.deepcopy(url_list)
                         # mail
@@ -107,8 +105,6 @@ def service():
                             mail_util.send_message("补货检查处理错误信息", error_msg)
                     else:
                         log_util.info("没有数据写入到邮件")
-                    print(item_codes)
-                    print(sizes)
                 except Exception as e:  # 捕获服务调用中的异常
                     if interval == 0:
                         error_msg = f"脚本执行失败, 处理停止: {''.join(traceback.format_exception(None, e, e.__traceback__))}"
