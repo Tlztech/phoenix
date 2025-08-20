@@ -21,6 +21,20 @@ def read_yaml(file_path: str) -> dict:
         log_util.error(f"发生了一个错误：{e}")
 
 
+def get_object_actions_top(brand: str, host: str, o='price'):
+    actions = []
+    for data in _dict:
+        if 'brand' in data and data['brand'] and data['brand'] == brand:
+            for target in data['targets']:
+                if target['host'] == host:
+                    objects = target['objects']
+                    for obj in objects:
+                        if o in obj['object']:
+                            return copy.deepcopy(obj['actions'])
+            break
+    return actions
+
+
 def get_object_price_actions_top(brand: str, host: str):
     actions = []
     for data in _dict:

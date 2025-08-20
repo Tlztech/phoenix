@@ -161,6 +161,18 @@
                                 ]
                             },
                         ]
+                    },
+                    {
+                        "object": "replenish",
+                        # 1.商品
+                        "actions": [
+                            {
+                                "url": "%url%",
+                                "action_type": "dynamic",
+                                "action": "get",
+                                "path": {"stock":"//div[@class='buy-config__cta-btn-group']/button[contains(@class, 'btn btn-lg btn-dark') and not(contains(@class, 'd-none'))]"},
+                            },
+                        ]
                     }
                 ]
             }
