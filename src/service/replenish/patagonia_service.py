@@ -66,7 +66,7 @@ def service():
                             log_util.info(f"mail:{bytes.decode(byte_data)}")
                             mail_util.send_csv_attachment("补货检查", byte_data)
                         if error_list:
-                            error_msg = f"价格获取失败，请确认这些商品网页{':'.join(error_list)}"
+                            error_msg = f"库存获取失败，请确认这些商品网页{':'.join(error_list)}"
                             log_util.error(error_msg)
                             # notify error with mail
                             mail_util.send_message("补货检查处理错误信息", error_msg)
@@ -87,4 +87,4 @@ def service():
         except KeyboardInterrupt:
             log_util.info("\n脚本已停止")
         finally:
-            log_util.info(f"品牌{brand.PATAGONIA_BRAND}价格变动检查脚本processed")
+            log_util.info(f"品牌{brand.PATAGONIA_BRAND}补货检查脚本processed")
