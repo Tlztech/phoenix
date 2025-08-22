@@ -215,6 +215,14 @@ def sprider(item_codes, targets, object = 'stock'):
                                     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                                     if action['action'] == "get":
                                         try:
+                                            current_path = action['path']['modal-close']
+                                            element = WebDriverWait(driver, 10).until(
+                                                EC.visibility_of_element_located((By.XPATH, current_path))
+                                            )
+                                            element.click()
+                                        except TimeoutException:
+                                            pass
+                                        try:
                                             current_path = action['path']['stock']
                                             element = WebDriverWait(driver, 10).until(
                                                 EC.visibility_of_element_located((By.XPATH, current_path))
