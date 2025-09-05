@@ -1,0 +1,2 @@
+pip install pandas openpyxl selenium pillow webdriver-manager qiniu
+
