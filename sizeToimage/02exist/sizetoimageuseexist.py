@@ -200,8 +200,8 @@ class QiniuImageProcessor:
                 
                 im = Image.open(BytesIO(png))
                 
-                # 添加10像素的边距
-                margin = 10
+                # 添加5像素的边距
+                margin = 5
                 
                 # im = im.crop((left, top, right, bottom))
                 im = im.crop((
