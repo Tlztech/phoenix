@@ -131,13 +131,13 @@ class QiniuImageProcessor:
                     <style>
                         table {{
                             border-collapse: collapse;
-                            width: 50%;
                             font-family: Arial, sans-serif;
                         }}
                         th, td {{
                             border: 1px solid #dddddd;
                             text-align: left;
                             padding: 8px;
+                            width: auto;
                         }}
                         th {{
                             background-color: #f2f2f2;
@@ -163,36 +163,70 @@ class QiniuImageProcessor:
             driver.get(f"file://{os.path.abspath(temp_html)}")
             time.sleep(1)  # 等待页面加载
             
-            # 定位表格元素
-            table = driver.find_element(By.TAG_NAME, "table")
+            try:
+                # 找到所有的<table>元素
+                tables = driver.find_elements(By.TAG_NAME, "table")
+                 
+                # 打印找到的<table>元素数量
+                # print(f"找到的<table>数量: {len(tables)}")
+                
+                table_count = 0
+                
+                # 遍历这些<table>元素：
+                for table in tables:
+                # 找到表格元素
+                    if table_count == 0 :
+                        # 获取表格位置和大小
+                        location = table.location
+                        size = table.size
+                        
+                        left = location['x']
+                        top = location['y']
+                        right = location['x'] + size['width']
+                        bottom = location['y'] + size['height']
+                        # print(f"<table>的left-top-rightbottom: {left}-{top}-{right}-{bottom}")
+                    else:
+                        size = table.size
+                        
+                        right = right + size['width']
+                        # bottom = bottom + size['height']
+                        # print(f"<table>的left-top-rightbottom: {left}-{top}-{right}-{bottom}")
+                
+                    table_count += 1
+                    
+                # 截图并裁剪
+                png = driver.get_screenshot_as_png()
+                driver.quit()
+                
+                im = Image.open(BytesIO(png))
+                
+                # 添加10像素的边距
+                margin = 10
+                
+                # im = im.crop((left, top, right, bottom))
+                im = im.crop((
+                    max(0, left - margin),
+                    max(0, top - margin),
+                    min(im.width, right + margin),
+                    min(im.height, bottom + margin)
+                ))
+                
+                # 保存临时图片
+                temp_img_path = f"temp_{code}.jpg"
+                im.save(temp_img_path, "JPEG", quality=85)
+                
+                return temp_img_path
             
-            # 截图并裁剪
-            png = driver.get_screenshot_as_png()
-            im = Image.open(BytesIO(png))
+            except Exception as e:
+                print(f"description中没有尺码信息存在")
+                
+                return '1'
+    
+        except Exception as e:
+            print(f"render_table_to_image函数出错: {code}")
             
-            # 计算裁剪区域
-            location = table.location
-            size = table.size
-            left = int(location['x'])
-            top = int(location['y'])
-            right = int(location['x'] + size['width'])
-            bottom = int(location['y'] + size['height'])
-            
-            # 添加10像素的边距
-            margin = 10
-            im = im.crop((
-                max(0, left - margin),
-                max(0, top - margin),
-                min(im.width, right + margin),
-                min(im.height, bottom + margin)
-            ))
-            
-            # 保存临时图片
-            temp_img_path = f"temp_{code}.jpg"
-            im.save(temp_img_path, "JPEG", quality=85)
-            
-            return temp_img_path
-            
+            return '1'
+        
         finally:
             if driver:
                 driver.quit()
@@ -267,16 +301,20 @@ class QiniuImageProcessor:
                             try:
                                 # 生成图片
                                 temp_img_path = self.render_table_to_image(str(description), current_code)
-                                temp_files.append(temp_img_path)
                                 
-                                # 上传到七牛云
-                                image_url = self.upload_image_to_qiniu(temp_img_path, current_code)
-                                last_created_url = image_url
-                                stats['new_created'] += 1
-                                
-                                if stats['new_created'] % 10 == 0:
-                                    self.print_time_used(f"已创建 {stats['new_created']} 个新图片")
-                                
+                                if temp_img_path != '1':
+                                    temp_files.append(temp_img_path)
+                                    
+                                    # 上传到七牛云
+                                    image_url = self.upload_image_to_qiniu(temp_img_path, current_code)
+                                    last_created_url = image_url
+                                    stats['new_created'] += 1
+                                    
+                                    if stats['new_created'] % 10 == 0:
+                                        self.print_time_used(f"已创建 {stats['new_created']} 个新图片")
+                                else:
+                                    print(f"该Code的尺码信息有误，请确认: {current_code}")
+                                    
                             except Exception as e:
                                 stats['errors'] += 1
                                 print(f"处理 {current_code} 时出错: {str(e)}")

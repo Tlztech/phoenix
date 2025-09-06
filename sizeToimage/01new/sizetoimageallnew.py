@@ -143,8 +143,18 @@ def save_description_as_image(description, file_path):
             driver.quit()
             
             im = Image.open(BytesIO(png))
-                    
-            im = im.crop((left, top, right, bottom))
+
+            # 添加10像素的边距
+            margin = 10
+            
+            # im = im.crop((left, top, right, bottom))
+            im = im.crop((
+                max(0, left - margin),
+                max(0, top - margin),
+                min(im.width, right + margin),
+                min(im.height, bottom + margin)
+            ))
+
             im.save(file_path, "JPEG")
             
             return process_result
@@ -220,16 +230,22 @@ def process_excel(excel_file, current_brand, color_size_flag):
                     # 保存描述为图片
                     process_result = save_description_as_image(str(description), temp_img_path)
                     # print(f"该Code的process_result: {process_result}")
-                    if process_result == 0:
-                        # 上传到七牛云
-                        qiniu_path = f"sizetoimg/{current_brand}/{current_code}.jpg"
-                        image_url = upload_to_qiniu(temp_img_path, qiniu_path)
-
+                    
+                    try:
+                        if process_result == 0:
+                            # 上传到七牛云
+                            qiniu_path = f"sizetoimg/{current_brand}/{current_code}.jpg"
+                            image_url = upload_to_qiniu(temp_img_path, qiniu_path)
+                            
+                            # 删除临时图片
+                            os.remove(temp_img_path)
+                        else:
+                            print(f"该Code的尺码信息有误，请确认: {current_code}")
+                    
+                    except Exception as e:
+                        print(f"处理 {current_code} 时出错: {str(e)}")
                         
-                        # 删除临时图片
-                        os.remove(temp_img_path)
-                    else:
-                        print(f"该Code的尺码信息有误，请确认: {current_code}")
+                        continue
                     
                     processed_count += 1
                     print(f"已处理: {current_code} ({processed_count})")
