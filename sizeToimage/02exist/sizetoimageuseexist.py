@@ -309,6 +309,7 @@ class QiniuImageProcessor:
                                     image_url = self.upload_image_to_qiniu(temp_img_path, current_code)
                                     last_created_url = image_url
                                     stats['new_created'] += 1
+                                    print(f"已处理: {current_code} ({stats['new_created']})")
                                     
                                     if stats['new_created'] % 10 == 0:
                                         self.print_time_used(f"已创建 {stats['new_created']} 个新图片")
