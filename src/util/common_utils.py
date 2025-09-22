@@ -43,6 +43,16 @@ def convert_sku_to_code(sku):
     return sku.split("-")[0]
 
 
+def convert_sku_to_color(sku):
+    parts = sku.split('-')
+    return parts[1] if len(parts) >= 2 else ''
+
+
+def convert_sku_to_size(sku):
+    parts = sku.split('-')
+    return parts[2] if len(parts) == 3 else ('-'.join(parts[2:]) if len(parts) > 3 else '')
+
+
 def convert_sku_to_code_color(input_str):
     parts = input_str.split('-')
     return '-'.join(parts[:2]) if len(parts) >= 2 else input_str

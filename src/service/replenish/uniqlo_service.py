@@ -51,7 +51,7 @@ def service():
         try:
             while interval >= 0:
                 try:
-                    output_data_list = sprider(item_codes, targets)
+                    output_data_list = sprider(item_codes, targets, 'replenish')
                     if output_data_list and len(output_data_list) > 0:
                         output_mail_list = []
                         item_codes = []

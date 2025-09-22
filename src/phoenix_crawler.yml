@@ -212,6 +212,45 @@
                 "objects": [
                     {
                         "object": "price",
+                        # 1.商品检索
+                        "actions": [
+                            {
+                                "url": "https://www.uniqlo.com/jp/ja/search?q=%item_code%",
+                                "action_type": "dynamic",
+                                "action": "click and get",
+                                "path": {"check-product-exists":"//p[text()='該当する商品がありませんでした。']", "item_click":"//div[@class='swiper-slide swiper-slide-visible swiper-slide-active']"},
+                                # l_1size遍历，color
+                                "actions": [
+                                    {
+                                        "url": "",
+                                        "action_type": "dynamic",
+                                        "action": "list",
+                                        "path": {"size-id-value": "//div[contains(@class,'size-chip-wrapper')]/button", "color-id-value": "//ul[@class='fr-ec-content-alignment fr-ec-content-alignment--direction-row fr-ec-content-alignment--content-flex-start fr-ec-content-alignment--alignment-center fr-ec-collection-list-horizontal fr-ec-collection-list-horizontal--mid fr-ec-collection-list-horizontal--align-center']/li[@class='fr-ec-collection-list-horizontal__item']/button"},
+                                        # l_2sku api
+                                        "actions": [
+                                            {
+                                                "url": "https://www.uniqlo.com/jp/api/commerce/v5/ja/products/E%code%-000/price-groups/00/l2s?withPrices=true&withStocks=false&includePreviousPrice=false&httpFailure=true",
+                                                "action_type": "dynamic",
+                                                "action": "get",
+                                                "path": {"l2Id": "//pre/text()"},
+                                                # l_3stock api
+                                                "actions": [
+                                                    {
+                                                        "url": "https://www.uniqlo.com/jp/api/commerce/v5/ja/l2s/%l2Id%/stores?keyword=%E6%96%B0%E5%AE%BF&unit=km&priceGroup=00&limit=6&httpFailure=true",
+                                                        "action_type": "dynamic",
+                                                        "action": "get",
+                                                        "path": {"stock":"//pre/text()"},
+                                                    },
+                                                ]
+                                            },
+                                        ]
+                                    }
+                                ]
+                            },
+                        ]
+                    },
+                    {
+                        "object": "replenish",
                         # 1.商品
                         "actions": [
                             {
