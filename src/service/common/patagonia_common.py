@@ -163,7 +163,7 @@ def sprider(item_codes, targets, object = 'stock'):
                                                                             output_data_list.extend(item_data_list)
                                                                             raise TemplateError()
                                                                     else:
-                                                                        for shop_name in shop.LULULEMON_SHOP_DICT.values():
+                                                                        for shop_name in shop.PATAGONIA_SHOP_DICT.values():
                                                                             item_data.update({shop_name: "检索商品库存数据出错"})
                                                                         log_util.error(f"{sku_url}返回数据无法正确解析product.id，商品{sku_file}.stock数据无法获取，api返回数据：{sku_json}")
                                                                 else:
