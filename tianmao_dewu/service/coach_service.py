@@ -1,10 +1,12 @@
 import re
 import json
+import os
 
 from constant import excel
 from dict import color_dict, size_dict
 from util import env_util
 from util.excel_util import ExcelUtil
+from datetime import datetime
 
 
 def service():
@@ -40,7 +42,7 @@ def service():
                                      excel.DEWU_COLUMN_INDEX.get('*修改后库存'): tianmao.get(
                                          excel.TIANMAO_COLUMN_INDEX.get('quantity'))})
                         if tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('discounted_price')) >= float(dewu.get(
-                                excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)'))):
+                                excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)')).replace(" ", "").replace(",", "")):
                             dewu.update(
                                 {excel.DEWU_COLUMN_INDEX.get(
                                     '结果'): f"tianmao价格>=预计收入(JPY),tianmao价格={tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('discounted_price'))}"})
@@ -65,8 +67,26 @@ def service():
         else:
             for tianmao in tianmao_value:
                 tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '上架'})
+    
+    # 获取当前日期时间
+    now = datetime.now()
+    timestamp = now.strftime("%Y%m%d_%H%M%S")
+    
+    # 获取品牌
+    brand_name = env_util.get_env('service_module').split(".")[1].split("_")[0]
+
+    dewu_output_filename = env_util.get_env('EXCEL_OUTPUT_FILE_DEWU')
+    # 处理得物文件名
+    dewu_base_name = os.path.splitext(dewu_output_filename)[0]
+    dewu_extension = os.path.splitext(dewu_output_filename)[1]
+     
+    tianmao_output_filename = env_util.get_env('EXCEL_OUTPUT_FILE_TIANMAO')
+    # 处理天猫文件名
+    tianmao_base_name = os.path.splitext(tianmao_output_filename)[0]
+    tianmao_extension = os.path.splitext(tianmao_output_filename)[1]
+
     dewu_output_data = [item for sublist in dewu_input_group_data_dict.values() for item in sublist]
-    dewu_output = ExcelUtil(env_util.get_env('EXCEL_OUTPUT_FILE_DEWU'))
+    dewu_output = ExcelUtil(f"{dewu_base_name}_{brand_name}_{timestamp}{dewu_extension}")
     dewu_output.write_excel(
         [{excel.DEWU_COLUMN_REVERSE_INDEX.get(k, k): (
             str(v) if k == excel.DEWU_COLUMN_INDEX.get('出价ID') or k == excel.DEWU_COLUMN_INDEX.get('SKU ID') or k == excel.DEWU_COLUMN_INDEX.get('条形码') else v) for
@@ -75,7 +95,7 @@ def service():
     tiammao_output_data = [item for sublist in tianmao_input_group_data_dict.values() for item in sublist]
     # print(json.dumps(tiammao_output_data, indent=4,
     #                  ensure_ascii=False))
-    tianmao_output = ExcelUtil(env_util.get_env('EXCEL_OUTPUT_FILE_TIANMAO'))
+    tianmao_output = ExcelUtil(f"{tianmao_base_name}_{brand_name}_{timestamp}{tianmao_extension}")
     tianmao_output.write_excel(
         [{excel.TIANMAO_COLUMN_REVERSE_INDEX.get(k, k): v for
           k, v in d.items()} for d in
