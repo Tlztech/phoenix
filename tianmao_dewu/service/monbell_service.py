@@ -50,8 +50,8 @@ def service():
                                          excel.DEWU_COLUMN_INDEX.get('我的出价(JPY)')),
                                      excel.DEWU_COLUMN_INDEX.get('*修改后库存'): tianmao.get(
                                          excel.TIANMAO_COLUMN_INDEX.get('quantity'))})
-                        if tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp')) > float(dewu.get(
-                                excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)')).replace(" ", "").replace(",", "")):
+                        if tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp')) > float(str(dewu.get(
+                                excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)'))).replace(" ", "").replace(",", "")):
                             dewu.update(
                                 {excel.DEWU_COLUMN_INDEX.get(
                                     '结果'): f"tianmao价格>预计收入(JPY),tianmao价格={tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))}"})

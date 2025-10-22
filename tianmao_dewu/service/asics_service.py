@@ -59,7 +59,7 @@ def service():
                         tianmao_pice = tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('discounted_price')) if not pd.isna(tianmao.get(
                             excel.TIANMAO_COLUMN_INDEX.get('discounted_price'))) else tianmao.get(
                             excel.TIANMAO_COLUMN_INDEX.get('msrp'))
-                        if int(tianmao_pice.replace(',', '')) > int(dewu.get(excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)')).replace(" ", "").replace(",", "")):
+                        if int(tianmao_pice.replace(',', '')) > int(str(dewu.get(excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)'))).replace(" ", "").replace(",", "")):
                             dewu.update(
                                 {excel.DEWU_COLUMN_INDEX.get(
                                     '结果'): f"tianmao价>预计收入(JPY),tianmao价={tianmao_pice}"})
