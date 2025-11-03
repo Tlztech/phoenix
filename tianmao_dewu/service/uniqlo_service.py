@@ -1,6 +1,5 @@
 import math
 import re
-import json
 import os
 
 from constant import excel
@@ -13,12 +12,16 @@ def service():
     # 读取Excel数据
     tianmao_input = ExcelUtil(env_util.get_env('EXCEL_INPUT_FILE_TIANMAO'))
     tianmao_input.load_data([value for key, value in excel.TIANMAO_COLUMN_INDEX.items() if key != '结果'], 1)
-    dewu_input = ExcelUtil(env_util.get_env('EXCEL_INPUT_FILE_DEWU'))
+    
+    # 读取排序后的第一个得物文件
+    dewu_input = ExcelUtil(common_util.get_sorted_excelfiles('.')[0])
     dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果'], 3)
+    
     tianmao_input_group_data_dict = tianmao_input.get_group_by_column(excel.TIANMAO_COLUMN_INDEX.get('model'))
     dewu_input_group_data_dict = dewu_input.get_group_by_column(excel.DEWU_COLUMN_INDEX.get('货号'))
     tianmao_model_list = list(tianmao_input_group_data_dict.keys())
     dewu_model_in_tianmao_list = []
+    
     for dewu_key, dewu_value in dewu_input_group_data_dict.items():
         tianmao_value = tianmao_input_group_data_dict.get(dewu_key)
         if any(str(dewu_key) == str(x) for x in tianmao_model_list):
