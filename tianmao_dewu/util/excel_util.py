@@ -1,6 +1,4 @@
 import pandas as pd
-import os
-import glob
 
 from util import log_util
 
