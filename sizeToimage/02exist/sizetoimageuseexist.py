@@ -109,7 +109,7 @@ class QiniuImageProcessor:
             # 不分割，使用原始值
             return code_str
 
-    def render_table_to_image(self, description, code):
+    def render_table_to_image(self, description, code, temp_img_path):
         """将描述内容渲染为表格并保存为图片"""
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
@@ -117,6 +117,8 @@ class QiniuImageProcessor:
         options.add_argument('--window-size=1920,1080')
         
         driver = None
+        process_result = 0
+        
         try:
             # 初始化浏览器驱动
             driver = webdriver.Chrome(
@@ -153,7 +155,7 @@ class QiniuImageProcessor:
                 </body>
             </html>
             """
-            
+          
             # 写入临时HTML文件
             temp_html = f"temp_{code}.html"
             with open(temp_html, "w", encoding="utf-8") as f:
@@ -212,20 +214,20 @@ class QiniuImageProcessor:
                 ))
                 
                 # 保存临时图片
-                temp_img_path = f"temp_{code}.jpg"
+                # temp_img_path = f"temp_{code}.jpg"
                 im.save(temp_img_path, "JPEG", quality=85)
                 
-                return temp_img_path
+                return process_result
             
             except Exception as e:
                 print(f"description中没有尺码信息存在")
-                
-                return '1'
+                process_result = 1
+                return process_result
     
         except Exception as e:
             print(f"render_table_to_image函数出错: {code}")
-            
-            return '1'
+            process_result = 1
+            return process_result
         
         finally:
             if driver:
@@ -233,6 +235,91 @@ class QiniuImageProcessor:
             if os.path.exists(temp_html):
                 os.remove(temp_html)
 
+    
+    def save_description_uili_as_image(self, description, current_code, temp_img_path):
+        """从描述中截取尺寸图表"""
+        # 设置Chrome浏览器选项
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        
+        # 启动浏览器
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        # driver = webdriver.Chrome(options=chrome_options)
+        
+        process_result = 0
+            
+        try:
+        
+            # 创建HTML内容
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                    ul {{ list-style-type: none; padding: 0; }}
+                    li {{ margin: 2px 0; padding: 4px; background-color: #f5f5f5; border-radius: 2px; }}
+                </style>
+            </head>
+            <body>
+            """
+            
+            # 假设描述是以逗号分隔的尺寸信息
+            if pd.notna(description):
+                size_items = str(description).split(',')
+                for item in size_items:
+                    html_content += f"{item.strip()}"
+            
+            html_content += """
+            </body>
+            </html>
+            """
+            
+            # 保存HTML到临时文件并打开
+            temp_html = f"temp_{current_code}.html"
+            with open(temp_html, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            driver.get(f"file://{os.path.abspath(temp_html)}")
+            
+            # 等待页面加载
+            time.sleep(2)
+            
+            try:
+                # 获取body元素的高度
+                #body = driver.find_element(By.TAG_NAME, 'body')
+                #body_height = body.size['height']
+                
+                # 设置窗口大小以适应内容（避免滚动条）
+                #driver.set_window_size(800, body_height + 100)
+                
+                # 截取整个页面
+                #screenshot_path = f"{current_code}.jpg"
+                driver.save_screenshot(temp_img_path)
+                
+                return process_result
+            
+            except Exception as e:
+                print(f"description中没有尺码信息存在")
+                
+                process_result = 1
+                return process_result
+               
+                
+        except Exception as e:
+            print(f"save_description_uili_as_image函数出错: {current_code}")
+            
+            process_result = 1
+            return process_result
+        
+        finally:
+            driver.quit()
+            if os.path.exists(temp_html):
+                os.remove(temp_html)
+    
+    
     def upload_image_to_qiniu(self, local_path, code):
         """上传图片到七牛云"""
         qiniu_path = f"sizetoimg/{self.brand_name}/{code}.jpg"
@@ -299,10 +386,24 @@ class QiniuImageProcessor:
                         description = row['Description']
                         if pd.notna(description) and str(description).strip():
                             try:
-                                # 生成图片
-                                temp_img_path = self.render_table_to_image(str(description), current_code)
+                            
+                                # 创建文件夹结构
+                                os.makedirs(f"sizetoimg/{self.brand_name}", exist_ok=True)
                                 
-                                if temp_img_path != '1':
+                                # 临时图片路径
+                                temp_img_path = f"sizetoimg/{self.brand_name}/{current_code}.jpg"
+                    
+                                if self.brand_name.upper() == "LACOSTE":
+                                    # 保存描述为图片
+                                    process_result = self.save_description_uili_as_image(str(description), current_code, temp_img_path)
+                                    # print(f"该Code的process_result: {process_result}")
+                                else:
+                                    # 生成图片
+                                    process_result = self.render_table_to_image(str(description), current_code, temp_img_path)
+                                    # print(f"该Code的process_result: {process_result}")
+
+                                
+                                if process_result == 0:
                                     temp_files.append(temp_img_path)
                                     
                                     # 上传到七牛云
