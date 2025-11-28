@@ -361,7 +361,10 @@ def service():
 
             for tianmao in tianmao_value:
                 if tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('结果')) is None:
-                    tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '没有color size匹配到，确认'})
+                    if int(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('quantity'))) > 0:
+                        tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '该货号没有规格匹配到，得物上架'})
+                    else:
+                        tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '无需处理'})
         else:
             for dewu in dewu_value:
                 dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '没有model匹配到，下架'})
@@ -370,7 +373,10 @@ def service():
             continue
         else:
             for tianmao in tianmao_value:
-                tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '上架'})
+                if int(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('quantity'))) > 0:
+                    tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '上架'})
+                else:
+                    tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '无需处理'})
     
     # 获取当前日期时间
     now = datetime.now()
