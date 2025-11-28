@@ -49,7 +49,7 @@ def process_specification(spec):
             after_size = temp[size_match.end():].strip()
             if after_size:
                 # 提取SIZE后的第一个英文单词作为size
-                first_word_match = re.match(r'^([a-zA-Z0-9./\-\(\)]+)', after_size)
+                first_word_match = re.match(r'^([a-zA-Z0-9./（）\-\(\)]+)', after_size)
                 if first_word_match:
                     size = re.sub(r'\bOne\b', '', first_word_match.group(1), flags=re.IGNORECASE).strip()
             
