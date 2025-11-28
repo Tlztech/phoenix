@@ -7,6 +7,7 @@ from dict import color_dict, size_dict
 from util import env_util, common_util
 from util.excel_util import ExcelUtil
 from datetime import datetime
+from collections import OrderedDict
 
 def extract_model_and_color(huohao):
     # 提取货号的数字部分作为model，英文字母部分作为color
@@ -21,6 +22,8 @@ def extract_model_and_color(huohao):
         
         color_match = re.search(r'[a-zA-Z0-9]+', color_data)
         color = color_match.group() if color_match else ""
+        if color.isdigit():
+            color = ""
         return model, color
     else:
         # 提取数字部分
@@ -30,116 +33,6 @@ def extract_model_and_color(huohao):
         return model, ""
 
 
-def load_color_mapping(file_path):
-    #"""加载颜色对照表并创建映射字典（不区分大小写）"""
-    try:
-        color_df = pd.read_excel(file_path)
-        
-        #"""预处理颜色对照表，创建快速查找结构"""
-        color_ref = {
-            'tianmao_lower': {},  # 小写的tianmao值映射到原值
-            'dewu1_lower': {},    # 小写的dewu1值映射到tianmao数据
-            'dewu_chinese': {}    # 中文dewu值映射到tianmao数据
-        }
-        
-        # 处理tianmao1到tianmao12列
-        tianmao_cols = [col for col in color_df.columns if col.startswith('tianmao')]
-        
-        for index, row in color_df.iterrows():
-            # 处理tianmao列 - 构建小写映射
-            for col in tianmao_cols:
-                if pd.notna(row[col]):
-                    original_value = str(row[col]).strip()
-                    lower_value = original_value.lower()
-                    
-                    # 只存储非空值
-                    if lower_value and lower_value not in color_ref['tianmao_lower']:
-                        color_ref['tianmao_lower'][lower_value] = original_value
-            
-            # 处理dewu1列
-            if 'dewu1' in color_df.columns and pd.notna(row['dewu1']):
-                dewu1_value = str(row['dewu1']).strip()
-                dewu1_lower = dewu1_value.lower()
-                
-                if dewu1_lower and dewu1_lower not in color_ref['dewu1_lower']:
-                    # 存储该行所有非空的tianmao数据
-                    tianmao_data = []
-                    for col in tianmao_cols:
-                        if pd.notna(row[col]):
-                            tianmao_data.append(str(row[col]).strip())
-                    color_ref['dewu1_lower'][dewu1_lower] = tianmao_data
-            
-            # 处理dewu2到dewu12中文列
-            dewu_chinese_cols = [col for col in color_df.columns 
-                               if col.startswith('dewu') and col not in ['dewu1']]
-            
-            for col in dewu_chinese_cols:
-                if pd.notna(row[col]):
-                    chinese_value = str(row[col]).strip()
-                    
-                    if chinese_value and chinese_value not in color_ref['dewu_chinese']:
-                        # 存储该行所有非空的tianmao数据
-                        tianmao_data = []
-                        for tianmao_col in tianmao_cols:
-                            if pd.notna(row[tianmao_col]):
-                                tianmao_data.append(str(row[tianmao_col]).strip())
-                        color_ref['dewu_chinese'][chinese_value] = tianmao_data
-        # print(f"color_ref: {color_ref}")
-        return color_ref
-        
-    except Exception as e:
-        print(f"加载颜色对照表时出错: {e}")
-        return {}
-
-def match_color(keyword1: str, keyword2: str, color_ref: dict) -> str:
-    #"""颜色匹配处理"""
-    keyword2_clean = str(keyword2).strip()
-    keyword2_lower = keyword2_clean.lower()
-    
-    # 8.1 先用关键词2匹配
-    if keyword2 and str(keyword2).strip():
-        # 8.1.1 在tianmao列中匹配（完全一致，不区分大小写）
-        if keyword2_lower in color_ref['tianmao_lower']:
-            # print(f"在tianmao列中匹配: {color_ref['tianmao_lower'][keyword2_lower]}")
-            return color_ref['tianmao_lower'][keyword2_lower]
-        
-        # 8.1.2 在dewu1列中匹配
-        if keyword2_lower in color_ref['dewu1_lower']:
-            tianmao_values = color_ref['dewu1_lower'][keyword2_lower]
-            if tianmao_values:
-                # print(f"在dewu1列中匹配: {', '.join(tianmao_values)}")
-                # 返回所有tianmao数据，用逗号分隔
-                return ', '.join(tianmao_values)
-        
-        # 8.1.3 用关键词1匹配dewu2到dewu12列
-        if keyword1 and str(keyword1).strip():
-            keyword1_clean = str(keyword1).strip()
-            if keyword1_clean in color_ref['dewu_chinese']:
-                tianmao_values = color_ref['dewu_chinese'][keyword1_clean]
-                if tianmao_values:
-                    # print(f"用关键词1匹配dewu2到dewu12列: {', '.join(tianmao_values)}")
-                    # 返回所有tianmao数据，用逗号分隔
-                    return ', '.join(tianmao_values)
-
-    # 如果关键词2为空，尝试用关键词1匹配
-    if keyword1 and str(keyword1).strip():
-        keyword1_clean = str(keyword1).strip()
-        if keyword1_clean in color_ref['dewu_chinese']:
-            tianmao_values = color_ref['dewu_chinese'][keyword1_clean]
-            if tianmao_values:
-                # print(f"尝试用关键词1匹配dewu2到dewu12列: {', '.join(tianmao_values)}")
-                return ', '.join(tianmao_values)
-                
-    # 8.1.4 如果都没有匹配到，使用关键词2作为color数据
-    if keyword2 and str(keyword2).strip():
-        # print(f"keyword2_clean: {keyword2_clean}")
-        return keyword2_clean
-    elif keyword1 and str(keyword1).strip():
-        # print(f"keyword1: {keyword1}")
-        return keyword1
-    else:
-        return ''
-
 def process_specification(spec):
     #"""处理规格列数据"""
     if pd.isna(spec) or spec == '':
@@ -148,9 +41,9 @@ def process_specification(spec):
     spec_str = str(spec).replace('双装', '').strip()
     
     # 3. 提取中文部分作为颜色匹配关键词1
-    chinese_matches = re.findall(r'[\u4e00-\u9fffx×]+', spec_str)
+    chinese_matches = re.findall(r'[\u4e00-\u9fffx×/]+', spec_str)
     color_keyword1 = ''.join(chinese_matches) if chinese_matches else ""
-    color_keyword1 = color_keyword1.replace('宽', '').strip()
+    color_keyword1 = color_keyword1.replace('宽', '').rstrip('/').strip()
     
     # 4. 去掉非英语字母的数据（中文及/符号），保留空格
     # 先保留英文和空格
@@ -246,6 +139,108 @@ def process_specification(spec):
     
     return temp, size, color_keyword1, color_keyword2
 
+def load_color_mapping(file_path):
+    #"""加载颜色对照表并创建映射字典（不区分大小写）"""
+    try:
+        if not os.path.exists(file_path):
+            print(f"警告：颜色对照文件 {file_path} 不存在")
+            return None
+            
+        color_df = pd.read_excel(file_path)
+        print(f"成功加载颜色对照表，共 {len(color_df)} 行数据")
+        
+        # 创建快速查找的字典
+        color_ref = {
+            'abbr_lower': {},  # 色号（英文缩写）的小写映射
+            'desc_lower': {},  # 官方英文描述的小写映射
+            'chinese_colors': {}  # 中文颜色词映射到色号列表
+        }
+        
+        # 处理每一行颜色数据
+        for idx, row in color_df.iterrows():
+            # 获取色号（英文缩写）
+            abbr = ''
+            if '色号（英文缩写）' in row and pd.notna(row['色号（英文缩写）']):
+                abbr = str(row['色号（英文缩写）']).strip()
+            
+            # 处理色号（英文缩写）列 - 建立小写映射
+            if abbr:
+                color_ref['abbr_lower'][abbr.lower()] = abbr
+            
+            # 处理官方英文描述列
+            if '官方英文描述' in row and pd.notna(row['官方英文描述']):
+                desc = str(row['官方英文描述']).strip()
+                if desc and abbr:
+                    color_ref['desc_lower'][desc.lower()] = abbr
+            
+            # 处理得物颜色列 - 建立中文颜色词映射
+            if '得物颜色' in row and pd.notna(row['得物颜色']):
+                chinese_colors = str(row['得物颜色']).strip()
+                if chinese_colors and abbr:
+                    # 按逗号分割中文颜色词
+                    colors_list = [color.replace(" ", "").replace("Logo", "") for color in chinese_colors.split(',')]
+                    for color in colors_list:
+                        if color:
+                            if color not in color_ref['chinese_colors']:
+                                color_ref['chinese_colors'][color] = []
+                            if abbr not in color_ref['chinese_colors'][color]:
+                                color_ref['chinese_colors'][color].append(abbr)
+        
+        print(f"颜色对照表预处理完成:")
+        print(f"  - 色号数量: {len(color_ref['abbr_lower'])}")
+        print(f"  - 英文描述数量: {len(color_ref['desc_lower'])}")
+        print(f"  - 中文颜色词数量: {len(color_ref['chinese_colors'])}")
+        
+        return color_ref
+        
+    except Exception as e:
+        print(f"加载颜色对照表时出错: {e}")
+        return None
+
+def match_color(color_keyword1, color_keyword2, color_ref):
+    #"""匹配颜色关键词"""
+    if not color_ref:
+        return color_keyword1
+    
+    matched_color = ''
+    
+    # 8.1 先用颜色匹配关键词2匹配
+    if color_keyword2:
+        keyword2_lower = color_keyword2.lower()
+        
+        # 在色号（英文缩写）列中匹配
+        if keyword2_lower in color_ref['abbr_lower']:
+            matched_color = color_ref['abbr_lower'][keyword2_lower]
+            # print(f"  匹配成功: 关键词2 '{color_keyword2}' -> 色号 '{matched_color}'")
+        
+        # 在官方英文描述列中匹配
+        elif not matched_color and keyword2_lower in color_ref['desc_lower']:
+            matched_color = color_ref['desc_lower'][keyword2_lower]
+            # print(f"  匹配成功: 关键词2 '{color_keyword2}' -> 描述 '{matched_color}'")
+    
+    # 用颜色匹配关键词1匹配中文颜色词
+    if not matched_color and color_keyword1:
+        if color_keyword1 in color_ref['chinese_colors']:
+            # 获取所有匹配的色号，去重
+            matched_abbrs = list(OrderedDict.fromkeys(color_ref['chinese_colors'][color_keyword1]))
+            matched_color = ','.join(matched_abbrs)
+            # print(f"  匹配成功: 关键词1 '{color_keyword1}' -> 中文颜色 '{matched_color}'")
+                    
+    # 8.1.4 如果都没有匹配到，使用关键词2作为color数据
+    if not matched_color:
+        if color_keyword2 and str(color_keyword2).strip():
+            # print(f"keyword2_clean: {keyword2_clean}")
+            matched_color = str(color_keyword2).strip().lower().strip()
+        elif color_keyword1 and str(color_keyword1).strip():
+            # print(f"keyword1: {keyword1}")
+            matched_color =  color_keyword1
+        else:
+            matched_color =  ''
+
+        # print(f"  未匹配到颜色关键词: '{matched_color}'")
+    
+    return matched_color
+
 def service():
     # 读取Excel数据
     tianmao_input = ExcelUtil(env_util.get_env('EXCEL_INPUT_FILE_TIANMAO'))
@@ -265,11 +260,9 @@ def service():
     color_mapping_file = "descente颜色对照.xlsx"
 
     # 加载颜色映射
-    print(f"正在加载颜色对照表: {color_mapping_file}")
+    # print(f"正在加载颜色对照表: {color_mapping_file}")
     color_ref = load_color_mapping(color_mapping_file)
     
-    print(f"颜色映射加载完成: tianmao映射{len(color_ref['tianmao_lower'])}条, dewu1映射{len(color_ref['dewu1_lower'])}条, 中文映射{len(color_ref['dewu_chinese'])}条")
-
     for dewu_key, dewu_value in dewu_input_group_data_dict.items():
         color_value = None
         if isinstance(dewu_key, str):
