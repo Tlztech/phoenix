@@ -42,6 +42,7 @@ DEWU_COLUMN_INDEX = {"出价ID": 0,
                     "近30日中国成交均价": 34,
                     "近30日中国最高成交价": 35,
                     "近30日中国最低成交价": 36,
-                    "结果": 37
+                    "结果": 37,
+                    "得物原价格": 38
                      }
 DEWU_COLUMN_REVERSE_INDEX = {v: k for k, v in DEWU_COLUMN_INDEX.items()}
