@@ -7,6 +7,7 @@ from dict import color_dict, size_dict
 from util import env_util, common_util
 from util.excel_util import ExcelUtil
 from datetime import datetime
+from collections import OrderedDict
 
 
 def extract_model_and_color(huohao):
@@ -166,67 +167,104 @@ def process_specification(spec):
     return temp, size, color_keyword1, color_keyword2
 
 def load_color_mapping(file_path):
-    # 加载颜色对照表并创建映射字典（不区分大小写）"""
+    #"""加载颜色对照表并创建映射字典（不区分大小写）"""
     try:
+        if not os.path.exists(file_path):
+            print(f"警告：颜色对照文件 {file_path} 不存在")
+            return None
+            
         color_df = pd.read_excel(file_path)
+        print(f"成功加载颜色对照表，共 {len(color_df)} 行数据")
         
-        # 创建映射字典（存储原始值，但搜索时使用小写）
-        tianmao_mapping = {}  # key: 小写的tianmao值, value: 原始的tianmao值
-        dewu1_mapping = {}    # key: 小写的dewu1值, value: 原始的tianmao值
-        dewu_chinese_mapping = {}  # key: 中文值, value: 原始的tianmao值
+        # 创建快速查找的字典
+        color_ref = {
+            'abbr_lower': {},  # 色号（英文缩写）的小写映射
+            'desc_lower': {},  # 官方英文描述的小写映射
+            'chinese_colors': {}  # 中文颜色词映射到色号列表
+        }
         
-        for _, row in color_df.iterrows():
-            tianmao_value = row.get('tianmao', '')
-            if pd.notna(tianmao_value) and tianmao_value != '':
-                tianmao_str = str(tianmao_value).strip()
-                # 存储小写版本作为key，但保留原始值
-                tianmao_mapping[tianmao_str.lower()] = tianmao_str
+        # 处理每一行颜色数据
+        for idx, row in color_df.iterrows():
+            # 获取色号（英文缩写）
+            abbr = ''
+            if '色号（英文缩写）' in row and pd.notna(row['色号（英文缩写）']):
+                abbr = str(row['色号（英文缩写）']).strip()
             
-            dewu1_value = row.get('dewu1', '')
-            if pd.notna(dewu1_value) and dewu1_value != '':
-                dewu1_str = str(dewu1_value).strip()
-                dewu1_mapping[dewu1_str.lower()] = tianmao_value if pd.notna(tianmao_value) else ""
+            # 处理色号（英文缩写）列 - 建立小写映射
+            if abbr:
+                color_ref['abbr_lower'][abbr.lower()] = abbr
             
-            # 处理dewu2到dewu9的中文颜色词
-            for col_num in range(2, 10):
-                col_name = f'dewu{col_num}'
-                if col_name in row:
-                    dewu_value = row[col_name]
-                    if pd.notna(dewu_value) and dewu_value != '':
-                        dewu_str = str(dewu_value).strip()
-                        # 中文不需要转换为小写
-                        dewu_chinese_mapping[dewu_str] = tianmao_value if pd.notna(tianmao_value) else ""
+            # 处理官方英文描述列
+            if '官方英文描述' in row and pd.notna(row['官方英文描述']):
+                desc = str(row['官方英文描述']).strip()
+                if desc and abbr:
+                    color_ref['desc_lower'][desc.lower()] = abbr
+            
+            # 处理得物颜色列 - 建立中文颜色词映射
+            if '得物颜色' in row and pd.notna(row['得物颜色']):
+                chinese_colors = str(row['得物颜色']).strip()
+                if chinese_colors and abbr:
+                    # 按逗号分割中文颜色词
+                    colors_list = [color.replace(" ", "").replace("Logo", "") for color in chinese_colors.split(',')]
+                    for color in colors_list:
+                        if color:
+                            if color not in color_ref['chinese_colors']:
+                                color_ref['chinese_colors'][color] = []
+                            if abbr not in color_ref['chinese_colors'][color]:
+                                color_ref['chinese_colors'][color].append(abbr)
         
-        return tianmao_mapping, dewu1_mapping, dewu_chinese_mapping
+        print(f"颜色对照表预处理完成:")
+        print(f"  - 色号数量: {len(color_ref['abbr_lower'])}")
+        print(f"  - 英文描述数量: {len(color_ref['desc_lower'])}")
+        print(f"  - 中文颜色词数量: {len(color_ref['chinese_colors'])}")
+        
+        return color_ref
         
     except Exception as e:
         print(f"加载颜色对照表时出错: {e}")
-        return {}, {}, {}
+        return None
 
-def match_color(color_keyword1, color_keyword2, tianmao_mapping, dewu1_mapping, dewu_chinese_mapping):
-    # 匹配颜色数据（不区分大小写匹配）"""
-    matched_color = ""
+def match_color(color_keyword1, color_keyword2, color_ref):
+    #"""匹配颜色关键词"""
+    if not color_ref:
+        return color_keyword1
     
-    # 8.1 优先使用颜色匹配关键词2在tianmao列中匹配（不区分大小写）
+    matched_color = ''
+    
+    # 8.1 先用颜色匹配关键词2匹配
     if color_keyword2:
-        color_keyword2_lower = color_keyword2.lower()
-        if color_keyword2_lower in tianmao_mapping:
-            matched_color = tianmao_mapping[color_keyword2_lower]
+        keyword2_lower = color_keyword2.lower()
+        
+        # 在色号（英文缩写）列中匹配
+        if keyword2_lower in color_ref['abbr_lower']:
+            matched_color = color_ref['abbr_lower'][keyword2_lower]
+            # print(f"  匹配成功: 关键词2 '{color_keyword2}' -> 色号 '{matched_color}'")
+        
+        # 在官方英文描述列中匹配
+        elif not matched_color and keyword2_lower in color_ref['desc_lower']:
+            matched_color = color_ref['desc_lower'][keyword2_lower]
+            # print(f"  匹配成功: 关键词2 '{color_keyword2}' -> 描述 '{matched_color}'")
     
-    # 如果没有匹配到，尝试颜色匹配关键词2在dewu1列中匹配（不区分大小写）
-    if not matched_color and color_keyword2:
-        color_keyword2_lower = color_keyword2.lower()
-        if color_keyword2_lower in dewu1_mapping:
-            matched_color = dewu1_mapping[color_keyword2_lower]
-    
-    # 如果还没有匹配到，尝试颜色匹配关键词1在dewu2-dewu9中文颜色词中匹配（精确匹配）
+    # 用颜色匹配关键词1匹配中文颜色词
     if not matched_color and color_keyword1:
-        if color_keyword1 in dewu_chinese_mapping:
-            matched_color = dewu_chinese_mapping[color_keyword1]
-    
-    # 如果都没有匹配到，返回颜色匹配关键词2
+        if color_keyword1 in color_ref['chinese_colors']:
+            # 获取所有匹配的色号，去重
+            matched_abbrs = list(OrderedDict.fromkeys(color_ref['chinese_colors'][color_keyword1]))
+            matched_color = ','.join(matched_abbrs)
+            # print(f"  匹配成功: 关键词1 '{color_keyword1}' -> 中文颜色 '{matched_color}'")
+                    
+    # 8.1.4 如果都没有匹配到，使用关键词2作为color数据
     if not matched_color:
-        matched_color = color_keyword2
+        if color_keyword2 and str(color_keyword2).strip():
+            # print(f"keyword2_clean: {keyword2_clean}")
+            matched_color = str(color_keyword2).strip().lower().strip()
+        elif color_keyword1 and str(color_keyword1).strip():
+            # print(f"keyword1: {keyword1}")
+            matched_color =  color_keyword1
+        else:
+            matched_color =  ''
+
+        # print(f"  未匹配到颜色关键词: '{matched_color}'")
     
     return matched_color
 
@@ -238,7 +276,7 @@ def service():
     
     # 读取排序后的第一个得物文件
     dewu_input = ExcelUtil(common_util.get_sorted_excelfiles('.')[0])
-    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果'], 3)
+    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果' and key != '得物原价格'], 3)
 
     tianmao_input_group_data_dict = tianmao_input.get_group_by_column(excel.TIANMAO_COLUMN_INDEX.get('model'))
     dewu_input_group_data_dict = dewu_input.get_group_by_column(excel.DEWU_COLUMN_INDEX.get('货号'))
@@ -249,11 +287,9 @@ def service():
     color_mapping_file = "montbell颜色对照.xlsx"
 
     # 加载颜色映射
-    print(f"正在加载颜色对照表: {color_mapping_file}")
-    tianmao_mapping, dewu1_mapping, dewu_chinese_mapping = load_color_mapping(color_mapping_file)
+    # print(f"正在加载颜色对照表: {color_mapping_file}")
+    color_ref = load_color_mapping(color_mapping_file)
     
-    print(f"颜色映射加载完成: tianmao映射{len(tianmao_mapping)}条, dewu1映射{len(dewu1_mapping)}条, 中文映射{len(dewu_chinese_mapping)}条")
-
     for dewu_key, dewu_value in dewu_input_group_data_dict.items():
         if isinstance(dewu_key, str):
             model, color_from_huohao = extract_model_and_color(dewu_key)
@@ -298,7 +334,7 @@ def service():
                     size_word = size
 
                     # 8. 颜色匹配处理
-                    matched_color = match_color(color_keyword1, color_keyword2, tianmao_mapping, dewu1_mapping, dewu_chinese_mapping)
+                    matched_color = match_color(color_keyword1, color_keyword2, color_ref)
                 
                     # 如果匹配到颜色且货号中没有提取到颜色，则使用匹配的颜色
                     if matched_color and not color_value:
@@ -308,7 +344,7 @@ def service():
                     if color_is_empty and str(temp).strip() != '':
                         color_word = temp
                 
-                dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '没有color size匹配到，确认'})
+                dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '没有匹配到天猫的规格(颜色尺码)，下架'})
                 
                 for tianmao in tianmao_value:
                     if (((  color_word is not None and size_word is not None) and (
@@ -332,12 +368,25 @@ def service():
                                          excel.DEWU_COLUMN_INDEX.get('我的出价(JPY)')),
                                      excel.DEWU_COLUMN_INDEX.get('*修改后库存'): tianmao.get(
                                          excel.TIANMAO_COLUMN_INDEX.get('quantity'))})
-                        # msrp > 预计收入(JPY)
-                        if tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp')) > float(str(dewu.get(
-                                excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)'))).replace(" ", "").replace(",", "")):
+                        # msrp 不等于 采购成本(JPY)
+                        if pd.isna(dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))) or not dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)')):
                             dewu.update(
                                 {excel.DEWU_COLUMN_INDEX.get(
-                                    '结果'): f"tianmao价格>预计收入(JPY),tianmao价格={tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))}"})
+                                    '结果'): f"天猫价格和采购成本(JPY)不一致，已更新O列"})
+                            dewu.update({
+                                excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'): 
+                                    round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))))})
+                        elif round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp')))) != round(float(str(dewu.get(
+                                excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))).replace(" ", "").replace(",", ""))):
+                            dewu.update(
+                                {excel.DEWU_COLUMN_INDEX.get(
+                                    '结果'): f"天猫价格和采购成本(JPY)不一致，已更新O列"})
+                            dewu.update(
+                                {excel.DEWU_COLUMN_INDEX.get('得物原价格'): 
+                                    round(float(str(dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))).replace(" ", "").replace(",", "")))})
+                            dewu.update({
+                                excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'): 
+                                    round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))))})
                         if int(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('quantity'))) == 0:
                             if dewu.get(excel.DEWU_COLUMN_INDEX.get('结果')):
                                 dewu.update({excel.DEWU_COLUMN_INDEX.get(

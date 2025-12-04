@@ -267,7 +267,7 @@ def service():
     
     # 读取排序后的第一个得物文件
     dewu_input = ExcelUtil(common_util.get_sorted_excelfiles('.')[0])
-    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果'], 3)
+    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果' or key != '得物原价格'], 3)
     
     tianmao_input_group_data_dict = tianmao_input.get_group_by_column(excel.TIANMAO_COLUMN_INDEX.get('model'))
     dewu_input_group_data_dict = dewu_input.get_group_by_column(excel.DEWU_COLUMN_INDEX.get('货号'))
@@ -315,7 +315,15 @@ def service():
                                          excel.DEWU_COLUMN_INDEX.get('我的出价(JPY)')),
                                      excel.DEWU_COLUMN_INDEX.get('*修改后库存'): tianmao.get(
                                          excel.TIANMAO_COLUMN_INDEX.get('quantity'))})
-                        if round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp')))) != round(float(str(dewu.get(
+                        # msrp 不等于 采购成本(JPY)
+                        if pd.isna(dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))) or not dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)')):
+                            dewu.update(
+                                {excel.DEWU_COLUMN_INDEX.get(
+                                    '结果'): f"天猫价格和采购成本(JPY)不一致，已更新O列"})
+                            dewu.update({
+                                excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'): 
+                                    round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))))})
+                        elif round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp')))) != round(float(str(dewu.get(
                                 excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))).replace(" ", "").replace(",", ""))):
                             dewu.update(
                                 {excel.DEWU_COLUMN_INDEX.get(
