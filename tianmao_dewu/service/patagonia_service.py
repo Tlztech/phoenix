@@ -149,11 +149,12 @@ def service():
     
     # 读取排序后的第一个得物文件
     dewu_input = ExcelUtil(common_util.get_sorted_excelfiles('.')[0])
-    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果'], 3)
+    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果' and key != '得物原价格'], 3)
     
     tianmao_input_group_data_dict = tianmao_input.get_group_by_column(excel.TIANMAO_COLUMN_INDEX.get('model'))
     dewu_input_group_data_dict = dewu_input.get_group_by_column(excel.DEWU_COLUMN_INDEX.get('货号'))
     tianmao_model_list = list(tianmao_input_group_data_dict.keys())
+    # print(f"tianmao_model_list '{tianmao_model_list}'")
     dewu_model_in_tianmao_list = []
     
     # 颜色对照表文件路径
@@ -170,14 +171,14 @@ def service():
         if isinstance(dewu_key, str):
             model, color_from_huohao = extract_model_and_color(dewu_key)
             # 1. 提取数字部分作为model
-            dewu_formatted_model = int(model)
+            dewu_formatted_model = str(model)
             # print(f"货号 '{dewu_key}' -> color: '{color_value}'")
 
             # 2. 提取英文字母部分作为color
             color_value = color_from_huohao
             # print(f"货号 '{dewu_key}' -> color: '{color_value}'")
         else:
-            dewu_formatted_model = dewu_key
+            dewu_formatted_model = str(dewu_key)
 
         # print(f"货号 '{dewu_key}' -> model: '{dewu_formatted_model}'")
 

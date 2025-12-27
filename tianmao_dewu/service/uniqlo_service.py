@@ -267,7 +267,7 @@ def service():
     
     # 读取排序后的第一个得物文件
     dewu_input = ExcelUtil(common_util.get_sorted_excelfiles('.')[0])
-    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果' or key != '得物原价格'], 3)
+    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果' and key != '得物原价格'], 3)
     
     tianmao_input_group_data_dict = tianmao_input.get_group_by_column(excel.TIANMAO_COLUMN_INDEX.get('model'))
     dewu_input_group_data_dict = dewu_input.get_group_by_column(excel.DEWU_COLUMN_INDEX.get('货号'))
