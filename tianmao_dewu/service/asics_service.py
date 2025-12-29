@@ -16,8 +16,9 @@ def service():
     tianmao_input.load_data([value for key, value in excel.TIANMAO_COLUMN_INDEX.items() if key != '结果'], 1)
     
     # 读取排序后的第一个得物文件
+    print(f"正在处理的得物表格: {common_util.get_sorted_excelfiles('.')[0]}")
     dewu_input = ExcelUtil(common_util.get_sorted_excelfiles('.')[0])
-    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果'], 3)
+    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果' and key != '得物原价格'], 3)
     
     tianmao_input_group_data_dict = tianmao_input.get_group_by_column(excel.TIANMAO_COLUMN_INDEX.get('model'))
     dewu_input_group_data_dict = dewu_input.get_group_by_column(excel.DEWU_COLUMN_INDEX.get('货号'))
@@ -40,11 +41,14 @@ def service():
                     if jp_eu is None:
                         jp_eu = specification if specification in ['JP', 'EU'] else None
                     if size is None:
-                        size = specification if common_util.is_number(specification) or specification in ['SS', 'LL', '3L', '4L'] else None
+                        size = specification if common_util.is_number(specification) or specification in ['S', 'M', 'L', 'XS', 'XL', 'XXL', '2XL', 'XXXL', '3XL', 'SS', 'LL', '3L', '4L'] else None
                         if size and common_util.is_number(size):
                             size = float(size)
+                # print(f"dewu_formatted_model: '{dewu_formatted_model}'")
+                # print(f"before-size: '{size}'")            
                 if (jp_eu is None or jp_eu == 'EU') and size:
                     size = size_dict.asics_size_convert(size)
+                # print(f"after-size: '{size}'")
                 dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '没有color size匹配到，确认'})
                 for tianmao in tianmao_value:
                     if (common_util.is_number(size) and common_util.is_number(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('size'))) and math.isclose(
@@ -63,7 +67,16 @@ def service():
                         tianmao_pice = tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('discounted_price')) if not pd.isna(tianmao.get(
                             excel.TIANMAO_COLUMN_INDEX.get('discounted_price'))) else tianmao.get(
                             excel.TIANMAO_COLUMN_INDEX.get('msrp'))
-                        if int(tianmao_pice.replace(',', '')) > int(str(dewu.get(excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)'))).replace(" ", "").replace(",", "")):
+                        
+                        revenueJPY = dewu.get(excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)'))
+                        if pd.isna(revenueJPY) or not dewu.get(revenueJPY):
+                            dewu.update(
+                                {excel.DEWU_COLUMN_INDEX.get(
+                                    '结果'): f"天猫价格和预计收入(JPY)不一致，已更新Q列"})
+                            dewu.update({
+                                excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)'): 
+                                    round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))))})
+                        elif round(float(tianmao_pice.replace(',', ''))) > round(float(str(revenueJPY).replace(" ", "").replace(",", ""))):
                             dewu.update(
                                 {excel.DEWU_COLUMN_INDEX.get(
                                     '结果'): f"tianmao价>预计收入(JPY),tianmao价={tianmao_pice}"})

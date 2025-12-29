@@ -76,7 +76,7 @@ ASICS_SIZE_EU_TO_JP_DICT = {35: 22,
                             50.5: 32
                             }
 
-ASICS_SIZE_DEWU_TO_TIANMAO = {'XS': 'SS', 'XL': 'LL', '2XL': '3L', '3XL': '4L'}
+ASICS_SIZE_DEWU_TO_TIANMAO = {'S':'S', 'M':'M', 'L':'L', 'XS':'SS', 'XL':'LL', '2XL':'3L', 'XXL':'3L', '3XL':'4L', 'XXXL':'4L', 'SS':'SS', 'LL':'LL', '3L':'3L', '4L':'4L'} 
 
 
 def asics_size_convert(size):
