@@ -73,18 +73,26 @@ def service():
                             excel.TIANMAO_COLUMN_INDEX.get('discounted_price'))) else tianmao.get(
                             excel.TIANMAO_COLUMN_INDEX.get('msrp'))
                         
-                        revenueJPY = dewu.get(excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)'))
-                        if pd.isna(revenueJPY) or not dewu.get(revenueJPY):
+                        # msrp 不等于 采购成本(JPY)
+                        if pd.isna(dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))) or not dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)')):
                             dewu.update(
                                 {excel.DEWU_COLUMN_INDEX.get(
-                                    '结果'): f"天猫价格和预计收入(JPY)不一致，已更新Q列"})
+                                    '结果'): f"天猫价格和采购成本(JPY)不一致，已更新O列"})
                             dewu.update({
-                                excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)'): 
+                                excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'): 
                                     round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))))})
-                        elif round(float(tianmao_pice.replace(',', ''))) > round(float(str(revenueJPY).replace(" ", "").replace(",", ""))):
+                        elif round(float(tianmao_pice)) != round(float(str(dewu.get(
+                                excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))).replace(" ", "").replace(",", ""))):
                             dewu.update(
                                 {excel.DEWU_COLUMN_INDEX.get(
-                                    '结果'): f"tianmao价>预计收入(JPY),tianmao价={tianmao_pice}"})
+                                    '结果'): f"天猫价格和采购成本(JPY)不一致，已更新O列"})
+                            dewu.update(
+                                {excel.DEWU_COLUMN_INDEX.get('得物原价格'): 
+                                    round(float(str(dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))).replace(" ", "").replace(",", "")))})
+                            dewu.update({
+                                excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'): 
+                                    round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))))})
+
                         if int(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('quantity'))) == 0:
                             if dewu.get(excel.DEWU_COLUMN_INDEX.get('结果')):
                                 dewu.update({excel.DEWU_COLUMN_INDEX.get(
