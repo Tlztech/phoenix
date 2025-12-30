@@ -49,7 +49,31 @@ def montbell_size_convert(size):
     return result
 
 
-ASICS_SIZE_EU_TO_JP_DICT = {35: 22,
+ASICS_SIZE_EU_TO_JP_DICT = {17: 10.5,
+                            18: 11,
+                            18.5: 11.5,
+                            19.5: 12,
+                            20.5: 12.5,
+                            21: 13,
+                            21.5: 13.5,
+                            22.5: 14,
+                            23.5: 14.5,
+                            23.5: 15,
+                            25: 15.5,
+                            26: 16,
+                            26.5: 16.5,
+                            27: 17,
+                            28: 17.25,
+                            28.5: 17.5,
+                            29.5: 18,
+                            30: 18.5,
+                            30.5: 19,
+                            31.5: 19.5,
+                            32.5: 20,
+                            33: 20.5,
+                            33.5: 21,
+                            34.5: 21.5,
+                            35: 22,
                             35.5: 22.25,
                             36: 22.5,
                             37: 23,
@@ -58,7 +82,7 @@ ASICS_SIZE_EU_TO_JP_DICT = {35: 22,
                             39: 24.5,
                             39.5: 25,
                             40: 25.25,
-                            40.5: 25.5,
+                            40.5: 25.75,
                             41.5: 26,
                             42: 26.5,
                             42.5: 27,
@@ -73,17 +97,36 @@ ASICS_SIZE_EU_TO_JP_DICT = {35: 22,
                             48.5: 30.75,
                             49: 31,
                             49.5: 31.5,
-                            50.5: 32
+                            50.5: 32,
+                            100: 100,
+                            110: 110,
+                            120: 120,
+                            130: 130,
+                            140: 140,
+                            150: 150,
+                            160: 160,
+                            170: 170
                             }
 
 ASICS_SIZE_DEWU_TO_TIANMAO = {'S':'S', 'M':'M', 'L':'L', 'XS':'SS', 'XL':'LL', '2XL':'3L', 'XXL':'3L', '3XL':'4L', 'XXXL':'4L', 'SS':'SS', 'LL':'LL', '3L':'3L', '4L':'4L'} 
-
 
 def asics_size_convert(size):
     if common_util.is_number(size):
         return ASICS_SIZE_EU_TO_JP_DICT.get(size, None)
     else:
         return ASICS_SIZE_DEWU_TO_TIANMAO.get(size, None)
+
+
+ASICS_SIZE_SOCKS_TO_JP_DICT = {'L': '27-29',
+                            'M': '25-27',
+                            'S': '23-25',
+                            'XS': '21-23',
+                            'XXS': '19-21',
+                            '2XS': '19-21'
+                            }
+
+def asics_size_convert_socks(size):
+    return ASICS_SIZE_SOCKS_TO_JP_DICT.get(size, None)
 
 
 KEEN_SIZE_EU_TO_JP_DICT = {'童': {'19': 11.5,

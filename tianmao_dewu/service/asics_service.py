@@ -37,7 +37,10 @@ def service():
                 specifications = dewu.get(excel.DEWU_COLUMN_INDEX.get('规格')).split(" ")
                 jp_eu = None
                 size = None
+                socks = None
                 for specification in specifications:
+                    if socks is None:
+                        socks = True if '双装' in specification else None
                     if jp_eu is None:
                         jp_eu = specification if specification in ['JP', 'EU'] else None
                     if size is None:
@@ -45,11 +48,13 @@ def service():
                         if size and common_util.is_number(size):
                             size = float(size)
                 # print(f"dewu_formatted_model: '{dewu_formatted_model}'")
-                # print(f"before-size: '{size}'")            
-                if (jp_eu is None or jp_eu == 'EU') and size:
+                # print(f"before-size: '{size}'")    
+                if (jp_eu is None or jp_eu == 'EU') and size and socks is None :
                     size = size_dict.asics_size_convert(size)
+                elif socks and size:
+                    size = size_dict.asics_size_convert_socks(size)
                 # print(f"after-size: '{size}'")
-                dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '没有color size匹配到，确认'})
+                dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '没有匹配到天猫的规格(颜色尺码)，下架'})
                 for tianmao in tianmao_value:
                     if (common_util.is_number(size) and common_util.is_number(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('size'))) and math.isclose(
                             float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('size'))),
