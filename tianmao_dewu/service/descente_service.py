@@ -10,7 +10,7 @@ from datetime import datetime
 from collections import OrderedDict
 
 def extract_model_and_color(huohao):
-    # 提取货号的数字部分作为model，英文字母部分作为color
+    #"""提取货号的数字部分作为model，英文字母部分作为color"""
     if pd.isna(huohao) or huohao == '':
         return "", ""
     
@@ -32,6 +32,66 @@ def extract_model_and_color(huohao):
         # 没有横线的情况
         return model, ""
 
+def eu_to_jp(eu_size):
+    # 根据EU尺码返回对应的JP尺码
+    # 由于同一个EU尺码可能对应多个JP尺码，返回时用逗号连接
+  
+    # 构建EU到JP的映射字典，键为EU值，值为对应的所有JP值（列表）
+    mapping = {}
+    
+    # 左侧数据 (第一列JP, 第二列EU)
+    left_data = [
+        (23, 36.5),
+        (23.5, 37),
+        (24, 38),
+        (24.5, 38.5),
+        (25, 39),
+        (25.5, 40),
+        (26, 40.5),
+        (26.5, 41),
+        (27, 42),
+        (27.5, 42.5),
+        (28, 43),
+        (28.5, 44),
+        (29, 44.5),
+        (29.5, 45)
+    ]
+    
+    # 右侧数据 (第三列JP, 第四列EU)
+    right_data = [
+        (23, 36),
+        (23.5, 36.5),
+        (24, 37),
+        (24.5, 38),
+        (25, 38.5),
+        (25.5, 39)
+    ]
+    
+    # 处理左侧数据
+    for jp, eu in left_data:
+        if eu not in mapping:
+            mapping[eu] = []
+        mapping[eu].append(jp)
+    
+    # 处理右侧数据
+    for jp, eu in right_data:
+        if eu not in mapping:
+            mapping[eu] = []
+        mapping[eu].append(jp)
+    
+    # 对每个EU对应的JP列表进行去重和排序
+    for eu in mapping:
+        # 去重并排序
+        unique_jp = sorted(set(mapping[eu]))
+        mapping[eu] = unique_jp
+    
+    # 查找输入EU尺码对应的JP尺码
+    if eu_size in mapping:
+        jp_sizes = mapping[eu_size]
+        # 将JP尺码转换为字符串并用逗号连接
+        return ",".join(str(jp) for jp in jp_sizes)
+    else:
+        return "尺码未找到"
 
 def process_specification(spec):
     #"""处理规格列数据"""
@@ -117,6 +177,9 @@ def process_specification(spec):
                 first_word_match = re.match(r'^([a-zA-Z0-9.\-]+)', after_size)
                 if first_word_match:
                     size = re.sub(r'\bOne\b', '', first_word_match.group(1), flags=re.IGNORECASE).strip()
+                    # print(f"size： {size} ")
+                    size_JP = eu_to_jp(float(size))
+                    # print(f"size_JP： {size_JP} ")
             
             # 7. 处理颜色匹配关键词2 - 去掉SIZE及后面的第一个单词
             # 构建要移除的模式
@@ -125,6 +188,7 @@ def process_specification(spec):
                 pattern_to_remove = r'EU\s*' + re.escape(size)
                 color_keyword2 = re.sub(pattern_to_remove, '', temp, flags=re.IGNORECASE)
                 color_keyword2 = re.sub(r'-', '', color_keyword2)
+                size = size_JP
             else:
                 # 如果没找到size单词，只移除SIZE
                 color_keyword2 = re.sub(eu_pattern, '', temp)
@@ -190,7 +254,7 @@ def load_color_mapping(file_path):
         print(f"  - 色号数量: {len(color_ref['abbr_lower'])}")
         print(f"  - 英文描述数量: {len(color_ref['desc_lower'])}")
         print(f"  - 中文颜色词数量: {len(color_ref['chinese_colors'])}")
-        
+                
         return color_ref
         
     except Exception as e:
@@ -203,19 +267,23 @@ def match_color(color_keyword1, color_keyword2, color_ref):
         return color_keyword1
     
     matched_color = ''
+    matched_color_pattern = ''
     
     # 8.1 先用颜色匹配关键词2匹配
     if color_keyword2:
         keyword2_lower = color_keyword2.lower()
+        # print(f"keyword2_lower: {keyword2_lower}")
         
         # 在色号（英文缩写）列中匹配
         if keyword2_lower in color_ref['abbr_lower']:
             matched_color = color_ref['abbr_lower'][keyword2_lower]
+            matched_color_pattern = '使用颜色关键词2在色号（英文缩写）列中匹配成功'
             # print(f"  匹配成功: 关键词2 '{color_keyword2}' -> 色号 '{matched_color}'")
         
         # 在官方英文描述列中匹配
         elif not matched_color and keyword2_lower in color_ref['desc_lower']:
             matched_color = color_ref['desc_lower'][keyword2_lower]
+            matched_color_pattern = '使用颜色关键词2在官方英文描述列中匹配成功'
             # print(f"  匹配成功: 关键词2 '{color_keyword2}' -> 描述 '{matched_color}'")
     
     # 用颜色匹配关键词1匹配中文颜色词
@@ -224,22 +292,26 @@ def match_color(color_keyword1, color_keyword2, color_ref):
             # 获取所有匹配的色号，去重
             matched_abbrs = list(OrderedDict.fromkeys(color_ref['chinese_colors'][color_keyword1]))
             matched_color = ','.join(matched_abbrs)
+            matched_color_pattern = '使用颜色关键词1在得物颜色列中匹配成功'
             # print(f"  匹配成功: 关键词1 '{color_keyword1}' -> 中文颜色 '{matched_color}'")
                     
     # 8.1.4 如果都没有匹配到，使用关键词2作为color数据
     if not matched_color:
         if color_keyword2 and str(color_keyword2).strip():
             # print(f"keyword2_clean: {keyword2_clean}")
-            matched_color = str(color_keyword2).strip().lower().strip()
+            matched_color = str(color_keyword2).strip()
+            matched_color_pattern = '都没有匹配成功，使用颜色关键词2'
         elif color_keyword1 and str(color_keyword1).strip():
             # print(f"keyword1: {keyword1}")
             matched_color =  color_keyword1
+            matched_color_pattern = '都没有匹配成功，使用颜色关键词1'
         else:
             matched_color =  ''
+            matched_color_pattern = ''
 
         # print(f"  未匹配到颜色关键词: '{matched_color}'")
     
-    return matched_color
+    return matched_color, matched_color_pattern
 
 def service():
     # 读取Excel数据
@@ -249,7 +321,7 @@ def service():
     # 读取排序后的第一个得物文件
     print(f"读取排序后的第一个得物文件: {common_util.get_sorted_excelfiles('.')[0]}")
     dewu_input = ExcelUtil(common_util.get_sorted_excelfiles('.')[0])
-    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果'], 3)
+    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果' and key != '得物原价格'], 3)
     
     tianmao_input_group_data_dict = tianmao_input.get_group_by_column(excel.TIANMAO_COLUMN_INDEX.get('model'))
     dewu_input_group_data_dict = dewu_input.get_group_by_column(excel.DEWU_COLUMN_INDEX.get('货号'))
@@ -308,7 +380,7 @@ def service():
                     size_word = size
 
                     # 8. 颜色匹配处理
-                    matched_color = match_color(color_keyword1, color_keyword2, color_ref)
+                    matched_color, matched_color_pattern = match_color(color_keyword1, color_keyword2, color_ref)
                 
                     # 如果匹配到颜色且货号中没有提取到颜色，则使用匹配的颜色
                     if matched_color and not color_value:
@@ -318,24 +390,59 @@ def service():
                     if color_is_empty and str(temp).strip() != '':
                         color_word = temp
 
-                dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '没有color size匹配到，确认'})
+                dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '没有匹配到天猫的规格(颜色尺码)，下架'})
                 # print(f"color_word: '{color_word}', size_word: '{size_word}'")
                 
                 for tianmao in tianmao_value:
-                    # print(f"TIANMAO_color: '{tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('color'))}'")
-                    # print(f"TIANMAO_size: '{tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('size'))}'")
-                    # print(f"color_result: '{tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('color')) in color_word}'")
-                    # print(f"color_result: '{str(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('size'))) == size_word}'")
-                    if (((  color_word is not None and size_word is not None) and (
-                            tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('color')) in color_word ) and (
-                            str(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('size'))) == size_word)) or (
+                    # 颜色匹配
+                    if color_word is not None:
+                        # print(f"color_word: '{color_word}'")
+                        # 获取天猫的颜色值
+                        tianmao_color = tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('color'))
+                        # print(f"TIANMAO_color: '{tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('color'))}'")
+                        
+                        # 颜色匹配逻辑
+                        color_match = False
+                        if tianmao_color is not None:
+                            if ',' in str(color_word):
+                                # color_word包含逗号，需要完全匹配
+                                color_parts = [c.strip() for c in str(color_word).split(',')]
+                                color_match = str(tianmao_color).strip() in color_parts
+                                # print(f"color_match-',' in str(color_word): '{color_match}'")
+                            else:
+                                # color_word不包含逗号，使用相等判断
+                                color_match = str(tianmao_color).strip() == str(color_word).strip()
+                                # print(f"color_match: '{color_match}'")
+                        
+                    # 尺码匹配
+                    if size_word is not None:
+                        # print(f"size_word: '{size_word}'")
+                        # 获取天猫的尺码值
+                        tianmao_size = str(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('size')))
+                        # print(f"TIANMAO_size: '{tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('size'))}'")
+                        
+                        # 尺码匹配
+                        size_match = False
+                        if tianmao_size is not None:
+                            if ',' in str(size_word):
+                                # size_word包含逗号，需要完全匹配
+                                size_parts = [c.strip() for c in str(size_word).split(',')]
+                                size_match = str(tianmao_size).strip() in size_parts
+                                # print(f"size_match-',' in str(size_word): '{size_match}'")
+                            else:
+                                # size_word不包含逗号，使用相等判断
+                                size_match = str(tianmao_size).strip() == str(size_word).strip()
+                                # print(f"size_match: '{size_match}'")
+
+                    # 得物天猫颜色尺码匹配
+                    if ((( color_word is not None and size_word is not None) and color_match and size_match) or (
                             
-                            ((  color_word is None and size_word is not None) and (
-                            str(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('size'))) == size_word) and (
+                            (( (color_word is None or size_word == '') and size_word is not None) and size_match and (
+                            pd.isna(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('color'))) or 
                             str(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('color'))).strip() == ''))) or (
                             
-                            ((  color_word is not None and size_word is None) and (
-                            tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('color')) in color_word) and (
+                            (( color_word is not None and (size_word is None or size_word == '')) and color_match and (
+                            pd.isna(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('size'))) or
                             str(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('size'))).strip() == '')))
                         ):
                         dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '',
@@ -345,17 +452,33 @@ def service():
                                         excel.DEWU_COLUMN_INDEX.get('我的出价(JPY)')),
                                     excel.DEWU_COLUMN_INDEX.get('*修改后库存'): tianmao.get(
                                         excel.TIANMAO_COLUMN_INDEX.get('quantity'))})
-                        if tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp')) > float(str(dewu.get(
-                                excel.DEWU_COLUMN_INDEX.get('预计收入(JPY)'))).replace(" ", "").replace(",", "")):
+                        # msrp 不等于 采购成本(JPY)
+                        if pd.isna(dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))) or not dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)')):
                             dewu.update(
                                 {excel.DEWU_COLUMN_INDEX.get(
-                                    '结果'): f"tianmao价格>预计收入(JPY),tianmao价格={tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))}"})
+                                    '结果'): f"天猫价格和采购成本(JPY)不一致，已更新O列"})
+                            dewu.update({
+                                excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'): 
+                                    round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))))})
+                        elif round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp')))) != round(float(str(dewu.get(
+                                excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))).replace(" ", "").replace(",", ""))):
+                            dewu.update(
+                                {excel.DEWU_COLUMN_INDEX.get(
+                                    '结果'): f"天猫价格和采购成本(JPY)不一致，已更新O列"})
+                            dewu.update(
+                                {excel.DEWU_COLUMN_INDEX.get('得物原价格'): 
+                                    round(float(str(dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))).replace(" ", "").replace(",", "")))})
+                            dewu.update({
+                                excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'): 
+                                    round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))))})
+                            
                         if int(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('quantity'))) == 0:
                             if dewu.get(excel.DEWU_COLUMN_INDEX.get('结果')):
                                 dewu.update({excel.DEWU_COLUMN_INDEX.get(
                                     '结果'): f"{dewu.get(excel.DEWU_COLUMN_INDEX.get('结果'))}\n没有库存，下架"})
                             else:
                                 dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '没有库存，下架'})
+                        
                         tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '匹配到'})
                         break
 
