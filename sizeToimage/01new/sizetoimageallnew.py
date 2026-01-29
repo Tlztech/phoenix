@@ -88,15 +88,17 @@ def save_description_uili_as_image(description, current_code, temp_img_path):
             </style>
         </head>
         <body>
+        <ul>
         """
         
         # 假设描述是以逗号分隔的尺寸信息
         if pd.notna(description):
-            size_items = str(description).split(',')
+            size_items = str(description).split('<br>')
             for item in size_items:
-                html_content += f"{item.strip()}"
+                html_content += '<li>' + f"{item.strip()}" + '</li>'
         
         html_content += """
+        </ul>
         </body>
         </html>
         """
@@ -292,6 +294,23 @@ def process_excel(excel_file, current_brand, color_size_flag):
         image_url = ''
         processed_count = 0
         
+        # 定义品牌列表并预先转换为大写
+        brands = [
+            "YONEX",
+            "SWANS",
+            "Gregory", 
+            "HellyHansen",
+            "TheNorthFace",
+            "descente",
+            "ASICS",
+            "Mizuno",
+            "OAKLEY",
+            "UnderArmour"
+        ]
+        
+        # 创建一个大写的品牌集合
+        brands_upper = {brand.upper() for brand in brands}
+
         for index, row in df.iterrows():
             
             # 处理Code列
@@ -312,7 +331,8 @@ def process_excel(excel_file, current_brand, color_size_flag):
                     # 临时图片路径
                     temp_img_path = f"sizetoimg/{current_brand}/{current_code}.jpg"
                     
-                    if current_brand.upper() == "LACOSTE":
+                    # 检查输入的大写版本是否在集合中
+                    if current_brand.upper() in brands_upper:
                         # 保存描述为图片
                         process_result = save_description_uili_as_image(str(description), current_code, temp_img_path)
                         # print(f"该Code的process_result: {process_result}")
