@@ -426,12 +426,12 @@ def service():
                         if tianmao_size is not None:
                             if ',' in str(size_word):
                                 # size_word包含逗号，需要完全匹配
-                                size_parts = [c.strip() for c in str(size_word).split(',')]
-                                size_match = str(tianmao_size).strip() in size_parts
+                                size_parts = [c.strip().replace('.0', '') for c in str(size_word).split(',')]
+                                size_match = str(tianmao_size).strip().replace('.0', '') in size_parts
                                 # print(f"size_match-',' in str(size_word): '{size_match}'")
                             else:
                                 # size_word不包含逗号，使用相等判断
-                                size_match = str(tianmao_size).strip() == str(size_word).strip()
+                                size_match = str(tianmao_size).strip().replace('.0', '') == str(size_word).strip().replace('.0', '')
                                 # print(f"size_match: '{size_match}'")
 
                     # 得物天猫颜色尺码匹配
