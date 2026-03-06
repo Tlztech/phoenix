@@ -80,16 +80,24 @@ def sprider(item_codes, targets, object='stock'):
                                             for action_l_1 in action['actions']:
                                                 item_data.update({'size': '', 'color': ''})
                                                 current_path = action_l_1['path']['color-id-value']
-                                                try:
-                                                    color_elements = WebDriverWait(driver, 10).until(
-                                                        EC.presence_of_all_elements_located((By.XPATH, current_path))
-                                                    )
-                                                except TimeoutException as te:
+                                                # try:
+                                                #     color_elements = WebDriverWait(driver, 10).until(
+                                                #         EC.visibility_of_all_elements_located((By.XPATH, current_path))
+                                                #     )
+                                                # except TimeoutException as te:
+                                                #     output_data_list.append(
+                                                #         {'item_code': item_code, 'url': '商品color获取失败', 'sku': sku_file})
+                                                #     log_util.error(
+                                                #         f"商品{sku_file} color获取失败, {''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                                #     break
+                                                color_elements = crawler_util.wait_for_stable_chips(driver, current_path)
+                                                if not color_elements or len(color_elements) == 0:
                                                     output_data_list.append(
                                                         {'item_code': item_code, 'url': '商品color获取失败', 'sku': sku_file})
                                                     log_util.error(
                                                         f"商品{sku_file} color获取失败, {''.join(traceback.format_exception(None, te, te.__traceback__))}")
                                                     break
+                                                color = None
                                                 for color_element in color_elements:
                                                     color_id = color_element.get_attribute('id').split('-')[0].replace(' ', '')
                                                     if color_id in color_file:
@@ -98,16 +106,21 @@ def sprider(item_codes, targets, object='stock'):
                                                         color_code = color_element.get_attribute('value')
                                                         color_element.click()
                                                         break
-                                                    else:
-                                                        color = None
                                                 if color:
                                                     if size_file:
                                                         current_path = action_l_1['path']['size-id-value']
-                                                        try:
-                                                            size_elements = WebDriverWait(driver, 10).until(
-                                                                EC.visibility_of_all_elements_located((By.XPATH, current_path))
-                                                            )
-                                                        except TimeoutException as te:
+                                                        # try:
+                                                        #     size_elements = WebDriverWait(driver, 10).until(
+                                                        #         EC.visibility_of_all_elements_located((By.XPATH, current_path))
+                                                        #     )
+                                                        # except TimeoutException as te:
+                                                        #     output_data_list.append(
+                                                        #         {'item_code': item_code, 'url': '商品size获取失败', 'sku': sku_file})
+                                                        #     log_util.error(
+                                                        #         f"商品{sku_file} size获取失败, {''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                                        #     break
+                                                        size_elements = crawler_util.wait_for_stable_chips(driver, current_path)
+                                                        if not size_elements or len(size_elements) == 0:
                                                             output_data_list.append(
                                                                 {'item_code': item_code, 'url': '商品size获取失败', 'sku': sku_file})
                                                             log_util.error(
@@ -115,7 +128,8 @@ def sprider(item_codes, targets, object='stock'):
                                                             break
                                                         for size_element in size_elements:
                                                             size_id = size_element.get_attribute('id').split('-')[0]
-                                                            if size_id in size_file.replace('MEN', '').replace('WOMEN', '').replace('KIDS', '').replace('BABY', ''):
+                                                            print(f"size_id:{size_id},size_file:{size_file}")
+                                                            if size_id == size_file.replace('WOMEN', '').replace('MEN', '').replace('KIDS', '').replace('BABY', ''):
                                                                 size = size_id
                                                                 item_data.update({'size': size})
                                                                 size_code = size_element.get_attribute('value')
@@ -141,7 +155,7 @@ def sprider(item_codes, targets, object='stock'):
                                                     break
                                                 if 'actions' in action_l_1 and action_l_1['actions'] and len(action_l_1['actions']) > 0:
                                                     for action_l_2 in action_l_1['actions']:
-                                                        l2_id_url = action_l_2['url'].replace('%code%', code)
+                                                        l2_id_url = action_l_2['url'].replace('%code%', item_url.split("products/")[1].split("/")[0])
                                                         driver.get(l2_id_url)
                                                         html_l2_id = driver.page_source.encode("utf-8", "ignore").decode("utf-8")
                                                         tree = etree.HTML(html_l2_id)

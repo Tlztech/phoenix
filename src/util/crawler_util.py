@@ -1,3 +1,5 @@
+import time
+
 import requests
 import chardet
 import html
@@ -128,7 +130,7 @@ def full_reset(driver, mode='DEBUG'):
 
 
 def get_undetected_driver(mode='DEBUG'):
-    driver = uc.Chrome(headless=False if mode == "DEBUG" else True)
+    driver = uc.Chrome(headless=False if mode == "DEBUG" else True, browser_executable_path="C:/lic/from note bak/projects/phoenix/crawler/chrome/chrome-win64/chrome-win64/chrome.exe")
     return driver
 
 
@@ -140,4 +142,71 @@ def close_undetected_driver(driver):
     finally:
         driver.service.stop()
 
+BLOCK_KEYWORDS = [
+    "执行安全验证",
+    "セキュリティ検証",
+    "Security Verification",
+    "Verify you are human",
+    "Checking your browser",
+    "Access Denied",
+]
 
+def is_blocked_page(driver):
+    try:
+        # 获取页面源码（速度较快）
+        source = driver.page_source.lower()
+
+        # 检查是否包含任何封锁关键词
+        for keyword in BLOCK_KEYWORDS:
+            if keyword.lower() in source:
+                return True
+
+        # 也可以检查 title (有时 title 会直接显示 "Security Check")
+        title = driver.title.lower()
+        for keyword in BLOCK_KEYWORDS:
+            if keyword.lower() in title:
+                return True
+
+        return False
+    except Exception:
+        # 如果无法获取源码，保守起见认为正常，或者根据具体报错处理
+        return False
+
+def wait_for_stable_chips(driver, xpath_str, timeout=15):
+    end_time = time.time() + timeout
+    last_count = -1
+    stable_count = 0
+    required_stable_times = 2 # 连续2次数量一致视为稳定
+    check_interval = 0.5
+
+    while time.time() < end_time:
+        try:
+            # 查找元素
+            elements = driver.find_elements(By.XPATH, xpath_str)
+            current_count = len(elements)
+
+            if current_count == 0:
+                time.sleep(check_interval)
+                continue
+
+            # 打印调试信息 (可选)
+            # print(f"当前找到: {current_count}, 上次: {last_count}, 稳定计数: {stable_count}")
+
+            if current_count == last_count:
+                stable_count += 1
+                if stable_count >= required_stable_times:
+                    print(f"✅ 加载稳定！共找到 {current_count} 个选项。")
+                    return elements
+            else:
+                stable_count = 0
+                last_count = current_count
+
+            time.sleep(check_interval)
+
+        except Exception as e:
+            time.sleep(check_interval)
+
+    # 超时返回
+    final_elements = driver.find_elements(By.XPATH, xpath_str)
+    print(f"⚠️ 等待超时，最终返回 {len(final_elements)} 个元素。")
+    return final_elements
