@@ -128,7 +128,6 @@ def sprider(item_codes, targets, object='stock'):
                                                             break
                                                         for size_element in size_elements:
                                                             size_id = size_element.get_attribute('id').split('-')[0]
-                                                            print(f"size_id:{size_id},size_file:{size_file}")
                                                             if size_id == size_file.replace('WOMEN', '').replace('MEN', '').replace('KIDS', '').replace('BABY', ''):
                                                                 size = size_id
                                                                 item_data.update({'size': size})
