@@ -154,7 +154,9 @@ def sprider(item_codes, targets, object='stock'):
                                                     break
                                                 if 'actions' in action_l_1 and action_l_1['actions'] and len(action_l_1['actions']) > 0:
                                                     for action_l_2 in action_l_1['actions']:
-                                                        l2_id_url = action_l_2['url'].replace('%code%', item_url.split("products/")[1].split("/")[0])
+                                                        products_code = item_url.split("products/")[1].split("/")[0]
+                                                        price_group_code = item_url.split("?")[0].split("/")[-1]
+                                                        l2_id_url = action_l_2['url'].replace('%code%', products_code).replace('%code2%', price_group_code)
                                                         driver.get(l2_id_url)
                                                         html_l2_id = driver.page_source.encode("utf-8", "ignore").decode("utf-8")
                                                         tree = etree.HTML(html_l2_id)

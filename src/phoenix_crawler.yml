@@ -229,7 +229,7 @@
                                         # l_2sku api
                                         "actions": [
                                             {
-                                                "url": "https://www.uniqlo.com/jp/api/commerce/v5/ja/products/%code%/price-groups/00/l2s?withPrices=true&withStocks=false&includePreviousPrice=false&httpFailure=true",
+                                                "url": "https://www.uniqlo.com/jp/api/commerce/v5/ja/products/%code%/price-groups/%code2%/l2s?withPrices=true&withStocks=false&includePreviousPrice=false&httpFailure=true",
                                                 "action_type": "dynamic",
                                                 "action": "get",
                                                 "path": {"l2Id": "//pre/text()"},
