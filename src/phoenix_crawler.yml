@@ -218,7 +218,7 @@
                                 "url": "https://www.uniqlo.com/jp/ja/search?q=%item_code%",
                                 "action_type": "dynamic",
                                 "action": "click and get",
-                                "path": {"check-product-exists":"//p[text()='該当する商品がありませんでした。']", "item_click":"//div[@role='button']//div[@class='swiper-slide swiper-slide-active']"},
+                                "path": {"check-product-exists":"//p[text()='該当する商品がありませんでした。']", "item_click":"//div[@role='button']//div[contains(@class, 'swiper-slide') and contains(@class, 'swiper-slide-active')]"},
                                 # l_1size遍历，color
                                 "actions": [
                                     {
