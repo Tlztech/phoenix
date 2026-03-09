@@ -225,7 +225,7 @@
                                         "url": "",
                                         "action_type": "dynamic",
                                         "action": "list",
-                                        "path": {"size-id-value": "//div[contains(@class,'size-chip-wrapper')]/button", "color-id-value": "//ul[@data-testid='ITOContentAlignment']//button[contains(@class, 'chip') and contains(@class, 'image-chip-large')]"},
+                                        "path": {"size-id-value": "//div[contains(@class,'size-chip-wrapper')]/button", "color-id-value": "//ul[@data-testid='ITOContentAlignment']//button[contains(@class, 'chip') and contains(@class, 'image-chip-large')]", "price": "//p[@class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-primary-dark fr-ec-text-transform-normal' or @class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-promotional fr-ec-text-transform-normal']"},
                                         # l_2sku api
                                         "actions": [
                                             {

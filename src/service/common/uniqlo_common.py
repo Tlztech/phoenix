@@ -133,6 +133,21 @@ def sprider(item_codes, targets, object='stock'):
                                                                 item_data.update({'size': size})
                                                                 size_code = size_element.get_attribute('value')
                                                                 size_element.click()
+                                                                try:
+                                                                    current_path = action_l_1['path']['price']
+                                                                    element = WebDriverWait(driver, 10).until(
+                                                                        EC.visibility_of_element_located((By.XPATH, current_path))
+                                                                    )
+                                                                    price = element.text
+                                                                except TimeoutException as te:
+                                                                    log_util.error(
+                                                                        f"商品{item_code}价格获取失败:{''.join(traceback.format_exception(None, te, te.__traceback__))}")
+                                                                    price = ''
+                                                                except NoSuchElementException as nsee:
+                                                                    log_util.error(
+                                                                        f"商品{item_code}价格获取失败:{''.join(traceback.format_exception(None, nsee, nsee.__traceback__))}")
+                                                                    price = ''
+                                                                item_data.update({'price':price})
                                                                 break
                                                             else:
                                                                 size = None

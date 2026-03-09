@@ -13,7 +13,7 @@ def service():
     if item_codes and targets:
         output_data_list = sprider(item_codes, targets)
         if output_data_list and len(output_data_list) > 0:
-            ordered_list = common_utils.reorder_dict(output_data_list, ["item_code", "sku", "url", "size", "color", "l2Id"]+list(shop.UNIQLO_SHOP_DICT.values()))
+            ordered_list = common_utils.reorder_dict(output_data_list, ["item_code", "sku", "url", "size", "color", "price", "l2Id"]+list(shop.UNIQLO_SHOP_DICT.values()))
             excel_util.write_excel(env_util.get_env('EXCEL_OUTPUT_FILE'), data=ordered_list)
         else:
             log_util.info("没有数据写入到EXCEL")
