@@ -11,7 +11,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 from constant import brand, shop
 from exception.TemplateError import TemplateError
-from util import log_util, crawler_util, env_util, yaml_util, common_utils
+from util import log_util, crawler_util, env_util, yaml_util, common_utils, size_utils
 
 
 def sprider(item_codes, targets, object='stock'):
@@ -128,7 +128,7 @@ def sprider(item_codes, targets, object='stock'):
                                                             break
                                                         for size_element in size_elements:
                                                             size_id = size_element.get_attribute('id').split('-')[0]
-                                                            if size_id == size_file.replace('WOMEN', '').replace('MEN', '').replace('KIDS', '').replace('BABY', ''):
+                                                            if size_utils.normalize_size(size_id) == size_utils.normalize_size(size_file.replace('WOMEN', '').replace('MEN', '').replace('KIDS', '').replace('BABY', '')):
                                                                 size = size_id
                                                                 item_data.update({'size': size})
                                                                 size_code = size_element.get_attribute('value')
