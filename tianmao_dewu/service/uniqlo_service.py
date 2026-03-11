@@ -5,6 +5,7 @@ import pandas as pd
 
 from constant import excel
 from util import env_util, common_util
+from util.common_util import calculate_bid_price
 from util.excel_util import ExcelUtil
 from datetime import datetime
 
@@ -341,6 +342,9 @@ def service():
                             else:
                                 dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '没有库存，下架'})
                         tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '匹配到'})
+                        cost_value = dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))
+                        if cost_value is not None and cost_value != '' and cost_value != '-' and isinstance(cost_value, (int, float)) and not math.isnan(cost_value):
+                            dewu.update({excel.DEWU_COLUMN_INDEX.get('预计出价'): calculate_bid_price(cost_value)})
                         break
             for tianmao in tianmao_value:
                 if tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('结果')) is None:
@@ -348,6 +352,12 @@ def service():
                         tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '该货号没有规格匹配到，得物上架'})
                     else:
                         tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '无需处理'})
+                discounted_value = tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('discounted_price'))
+                msrp_value = tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))
+                if discounted_value is not None and discounted_value != '' and discounted_value != '-' and isinstance(discounted_value, (int, float)) and not math.isnan(discounted_value):
+                    tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('预计出价'): calculate_bid_price(discounted_value)})
+                elif msrp_value is not None and msrp_value != '' and msrp_value != '-' and isinstance(msrp_value, (int, float)) and not math.isnan(msrp_value):
+                    tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('预计出价'): calculate_bid_price(msrp_value)})
         else:
             for dewu in dewu_value:
                 dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '没有model匹配到，下架'})
@@ -356,6 +366,12 @@ def service():
             continue
         else:
             for tianmao in tianmao_value:
+                discounted_value = tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('discounted_price'))
+                msrp_value = tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))
+                if discounted_value is not None and discounted_value != '' and discounted_value != '-' and isinstance(discounted_value, (int, float)) and not math.isnan(discounted_value):
+                    tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('预计出价'): calculate_bid_price(discounted_value)})
+                elif msrp_value is not None and msrp_value != '' and msrp_value != '-' and isinstance(msrp_value, (int, float)) and not math.isnan(msrp_value):
+                    tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('预计出价'): calculate_bid_price(msrp_value)})
                 if int(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('quantity'))) > 0:
                     tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '上架'})
                 else:

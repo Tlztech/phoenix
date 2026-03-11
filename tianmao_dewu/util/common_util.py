@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import glob
 import re
+import math
 
 def is_number(s):
     if s is not None:
@@ -49,3 +50,48 @@ def get_sorted_excelfiles(directory='.'):
     except Exception as e:
         print(f"处理文件时出错: {e}")
         return []
+
+def calculate_bid_price(cost_price, base_multiplier=1.15, round_mode='ceil'):
+    """
+    根据采购成本计算出价。
+
+    参数:
+        cost_price (float): 采购成本
+        round_mode (str): 取整模式
+            - 'ceil': 向上取整到最近的100 (默认，推荐用于出价)
+            - 'round': 四舍五入到最近的100
+
+    返回:
+        int: 换算成100的整数倍的出价
+    """
+    # base_multiplier = 1.15
+    raw_price = 0.0
+
+    # ① 采购成本 < 11500
+    if cost_price < 11500:
+        # 公式: (1.15 * 成本 + 2600) / 0.99
+        raw_price = (base_multiplier * cost_price + 2600) / 0.99
+
+    # ② 11500 ≤ 采购成本 ≤ 78500
+    elif 11500 <= cost_price <= 78500:
+        # 公式: (1.15 * 成本 + 1900) / 0.94
+        raw_price = (base_multiplier * cost_price + 1900) / 0.94
+
+    # ③ 采购成本 > 78500
+    else:
+        # 公式: (1.15 * 成本 + 5930) / 0.99
+        raw_price = (base_multiplier * cost_price + 5930) / 0.99
+
+    # 换算成100的整数
+    if round_mode == 'ceil':
+        # 向上取整逻辑: 先除以100，向上取整，再乘以100
+        # 例: 12310 -> 123.1 -> ceil(124) -> 12400
+        final_price = math.ceil(raw_price / 100) * 100
+    elif round_mode == 'round':
+        # 四舍五入逻辑: 先除以100，四舍五入，再乘以100
+        # 例: 12340 -> 123.4 -> round(123) -> 12300
+        final_price = round(raw_price / 100) * 100
+    else:
+        raise ValueError("round_mode 必须是 'ceil' 或 'round'")
+
+    return int(final_price)
