@@ -264,11 +264,11 @@ def process_string_size_v2(input_str):
 def service():
     # 读取Excel数据
     tianmao_input = ExcelUtil(env_util.get_env('EXCEL_INPUT_FILE_TIANMAO'))
-    tianmao_input.load_data([value for key, value in excel.TIANMAO_COLUMN_INDEX.items() if key != '结果'], 1)
+    tianmao_input.load_data([value for key, value in excel.TIANMAO_COLUMN_INDEX.items() if key != '结果' and key != '预计出价' and key != 'SKU ID'], 1)
     
     # 读取排序后的第一个得物文件
     dewu_input = ExcelUtil(common_util.get_sorted_excelfiles('.')[0])
-    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果' and key != '得物原价格'], 3)
+    dewu_input.load_data([value for key, value in excel.DEWU_COLUMN_INDEX.items() if key != '结果' and key != '得物原价格' and key != '预计出价'], 3)
     
     tianmao_input_group_data_dict = tianmao_input.get_group_by_column(excel.TIANMAO_COLUMN_INDEX.get('model'))
     dewu_input_group_data_dict = dewu_input.get_group_by_column(excel.DEWU_COLUMN_INDEX.get('货号'))
@@ -316,6 +316,7 @@ def service():
                                          excel.DEWU_COLUMN_INDEX.get('我的出价(JPY)')),
                                      excel.DEWU_COLUMN_INDEX.get('*修改后库存'): tianmao.get(
                                          excel.TIANMAO_COLUMN_INDEX.get('quantity'))})
+                        tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('SKU ID'): dewu.get(excel.DEWU_COLUMN_INDEX.get('SKU ID'))})
                         # msrp 不等于 采购成本(JPY)
                         if pd.isna(dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))) or not dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)')):
                             dewu.update(
