@@ -18,11 +18,11 @@ def extract_model_and_color(huohao):
     huohao_str = str(huohao).strip()
     # 提取数字部分
     model_match = re.search(r'\d+', huohao_str)
-    model = model_match.group() if model_match else ""
+    model = model_match.group() if model_match else "0"
     
     # 提取英文字母部分
     color_match = re.search(r'[a-zA-Z]+', huohao_str)
-    color = color_match.group() if color_match else "0"
+    color = color_match.group() if color_match else ""
     
     return model, color
 
