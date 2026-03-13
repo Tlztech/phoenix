@@ -22,7 +22,7 @@ def extract_model_and_color(huohao):
     
     # 提取英文字母部分
     color_match = re.search(r'[a-zA-Z]+', huohao_str)
-    color = color_match.group() if color_match else ""
+    color = color_match.group() if color_match else "0"
     
     return model, color
 
