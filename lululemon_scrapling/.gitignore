@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+.lululemon_cache/
+.tmp/
+temp/
+alerts/
+scheduled_runs/
+*.xlsx
+lululemon_log_raw_*.txt
+lululemon_log_summary_*.txt
+lululemon_error_*.txt
