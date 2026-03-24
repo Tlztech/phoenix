@@ -97,7 +97,7 @@ def service():
                             
                             tianmao.update({excel.TIANMAO_COLUMN_INDEX.get('结果'): '匹配到'})
                             cost_value = dewu.get(excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))
-                            if cost_value is not None and cost_value != '' and cost_value != '-' and isinstance(cost_value, (int, float)) and math.isnan(cost_value):
+                            if cost_value is not None and cost_value != '' and cost_value != '-' and isinstance(cost_value, (int, float)) and not math.isnan(cost_value):
                                 dewu.update({excel.DEWU_COLUMN_INDEX.get('预计出价'): calculate_bid_price(cost_value)})
                             break
             if tianmao_value:
