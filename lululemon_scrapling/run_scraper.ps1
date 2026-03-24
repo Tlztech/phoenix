@@ -1,14 +1,38 @@
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$pythonExe = Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe"
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $archiveRoot = Join-Path $scriptDir "scheduled_runs"
 $runOutputDir = Join-Path $archiveRoot $timestamp
 $alertDir = Join-Path $scriptDir "alerts"
+$candidatePythonExes = @(
+    (Join-Path $scriptDir ".venv\Scripts\python.exe"),
+    (Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe")
+)
 
-if (-not (Test-Path $pythonExe)) {
-    throw "Python not found at $pythonExe. Please reinstall Python 3.12 first."
+$pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+if ($pythonCommand) {
+    $candidatePythonExes += $pythonCommand.Source
+}
+
+foreach ($candidate in $candidatePythonExes | Select-Object -Unique) {
+    if (-not $candidate -or -not (Test-Path $candidate)) {
+        continue
+    }
+
+    try {
+        & $candidate -c "import openpyxl, scrapling" 1>$null 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $pythonExe = $candidate
+            break
+        }
+    }
+    catch {
+    }
+}
+
+if (-not $pythonExe -or -not (Test-Path $pythonExe)) {
+    throw "No usable Python found. Checked project venv, user-local Python 3.12, and PATH for openpyxl + scrapling."
 }
 
 New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
