@@ -2,6 +2,7 @@
 *.xlsx
 *.rar
 *.jpg
+!lululemon_scrapling/*.txt
 
 
 sizeToimage/01new/sizetoimg
