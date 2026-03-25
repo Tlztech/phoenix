@@ -130,7 +130,7 @@ def full_reset(driver, mode='DEBUG'):
 
 
 def get_undetected_driver(mode='DEBUG'):
-    driver = uc.Chrome(headless=False if mode == "DEBUG" else True, browser_executable_path="C:/lic/from note bak/projects/phoenix/crawler/chrome/chrome-win64/chrome-win64/chrome.exe")
+    driver = uc.Chrome(headless=False if mode == "DEBUG" else True)
     return driver
 
 

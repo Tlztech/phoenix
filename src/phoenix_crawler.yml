@@ -1,541 +1,579 @@
 #phoenix crawler
 [
-    {
-        "brand": "montbell",
-        "targets":[
-            {
-                "host": "montbell",
-                "url": "https://webshop.montbell.jp/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 商品检索
-                        "actions": [
-                            {
-                                "url": "https://webshop.montbell.jp/goods/list_search.php?top_sk=%item_code%",
-                                "action_type": "static",
-                                "action": "get",
-                                "path": {"item_list":"//div[@id='goodsList']/div[position()>1]/div/div[2]/div[1]/p[6]/a/@href"},
-                                # l_1商品详细
-                                "actions": [
-                                    {
-                                        "url": "https://webshop.montbell.jp%list_value%",
-                                        "action_type": "static",
-                                        "action": "get",
-                                        "path": {"price":"//*[@id='maindataCont']/div[2]/div[2]/table[1]/tr[1]/td/text()", "size":"//*[@id='maindataCont']/div[2]/form/div[1]/div[1]/select/option[position()>1]/@value", "color":"//*[@id='size_%size%']/table/tr[position()>1]/td[1]/div/p[2]/a/text()", "color_no_size":"//*[@id='size_']/table/tr[position()>1]/td[1]/div/p[2]/a/text()", "official_website_stock_no_size": "//*[@id='size_']/table/tr[position()>1]/td[2]/p[1]/text()", "official_website_stock": "//div[@id='size_%size%']/table/tr[position()>1]/td[2]/p[1]/text()"},
-                                        # l_2库存
-                                        "actions": [
-                                            {
-                                                "url": "https://webshop.montbell.jp/goods/store_stock_api.php?pid=%item_code%&size=%size%&color=%color%&area=13&_=%timestamp%",
-                                                "action_type": "api",
-                                                "action": "get",
-                                                # 1:在庫あり2:在庫わずか
-                                                "path": {618937: "stock_status", 678596: "stock_status"},
-                                            },
-                                        ]
-                                    }
-                                ]
-                            },
-                        ]
-                    },
+  {
+    "brand": "montbell",
+    "targets": [
+      {
+        "host": "montbell",
+        "url": "https://webshop.montbell.jp/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 商品检索
+            "actions": [
+              {
+                "url": "https://webshop.montbell.jp/goods/list_search.php?top_sk=%item_code%",
+                "action_type": "static",
+                "action": "get",
+                "path": { "item_list": "//div[@id='goodsList']/div[position()>1]/div/div[2]/div[1]/p[6]/a/@href" },
+                # l_1商品详细
+                "actions": [
+                  {
+                    "url": "https://webshop.montbell.jp%list_value%",
+                    "action_type": "static",
+                    "action": "get",
+                    "path": { "price": "//*[@id='maindataCont']/div[2]/div[2]/table[1]/tr[1]/td/text()", "size": "//*[@id='maindataCont']/div[2]/form/div[1]/div[1]/select/option[position()>1]/@value", "color": "//*[@id='size_%size%']/table/tr[position()>1]/td[1]/div/p[2]/a/text()", "color_no_size": "//*[@id='size_']/table/tr[position()>1]/td[1]/div/p[2]/a/text()", "official_website_stock_no_size": "//*[@id='size_']/table/tr[position()>1]/td[2]/p[1]/text()", "official_website_stock": "//div[@id='size_%size%']/table/tr[position()>1]/td[2]/p[1]/text()" },
+                    # l_2库存
+                    "actions": [
+                      {
+                        "url": "https://webshop.montbell.jp/goods/store_stock_api.php?pid=%item_code%&size=%size%&color=%color%&area=13&_=%timestamp%",
+                        "action_type": "api",
+                        "action": "get",
+                        # 1:在庫あり2:在庫わずか
+                        "path": { 618937: "stock_status", 678596: "stock_status" },
+                      },
+                    ]
+                  }
                 ]
-            },
-            {
-                "host": "himaraya",
-                "url": "https://www.himaraya.co.jp/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        "actions": [
-                            {
-                                "url": "https://www.himaraya.co.jp/search?q=%item_code%",
-                                "action_type": "static",
-                                "action": "get",
-                                "path": {"price":"//*[@class='categoryList-List']/div[contains(@class, 'categoryList-List-content')]//p[@class='categoryList-List--info-price-sale']/text()",
-                                        "color":"//*[@class='categoryList-List']/div[contains(@class, 'categoryList-List-content')]//p[@class='product-name']/text()"},
-                            },
-                        ]
-                    },
-                ]
-            },
+              },
+            ]
+          },
         ]
-    },
-    {
-        "brand": "lululemon",
-        "targets":[
-            {
-                "host": "lululemon",
-                "url": "https://www.lululemon.co.jp/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # l_1 1.商品详细 2.color
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"valid-url": "//p[@class='hero-subtext' and text()='申し訳ありません。お探しのページが見つかりませんでした。']", "data-color-title": "//div[@class='color-group']//button[contains(@class, 'selected')]"},
-                                # l_2size遍历
-                                "actions": [
-                                    {
-                                        "url": "",
-                                        "action_type": "dynamic",
-                                        "action": "list",
-                                        "path": {"aria-label": "//div[@id='size']/div/span/input[contains(@class, 'options-select') and not(contains(@class, 'disabled'))]", "value": "//div[@id='size']/div/span/input[contains(@class, 'options-select') and not(contains(@class, 'disabled'))]", "data-attr-value": "//div[@id='size']/div/span/input[contains(@class, 'options-select') and not(contains(@class, 'disabled'))]"},
-                                        # l_3sku api
-                                        "actions": [
-                                            {
-                                                "url": "%value%",
-                                                "action_type": "dynamic",
-                                                "action": "get",
-                                                "path": {"sku": "//pre/text()"},
-                                                # l_4 stock api
-                                                "actions": [
-                                                    {
-                                                        "url": "https://www.lululemon.co.jp/on/demandware.store/Sites-JP-Site/ja_JP/InStores-FindStores?lat=34.6654311&long=135.4580466&pid=%sku%",
-                                                        "action_type": "dynamic",
-                                                        "action": "get",
-                                                        # available:在庫ありonlyfewleft:在庫わずか
-                                                        "path": {"stock": "//pre/text()"},
-                                                    }
-                                                ]
-                                            }
-                                        ]
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                ]
-            },
+      },
+      {
+        "host": "himaraya",
+        "url": "https://www.himaraya.co.jp/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            "actions": [
+              {
+                "url": "https://www.himaraya.co.jp/search?q=%item_code%",
+                "action_type": "static",
+                "action": "get",
+                "path": { "price": "//*[@class='categoryList-List']/div[contains(@class, 'categoryList-List-content')]//p[@class='categoryList-List--info-price-sale']/text()",
+                          "color": "//*[@class='categoryList-List']/div[contains(@class, 'categoryList-List-content')]//p[@class='product-name']/text()" },
+              },
+            ]
+          },
         ]
-    },
-    {
-        "brand": "patagonia",
-        "targets":[
-            {
-                "host": "patagonia",
-                "url": "https://www.patagonia.jp/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品检索
+      },
+    ]
+  },
+  {
+    "brand": "lululemon",
+    "targets": [
+      {
+        "host": "lululemon",
+        "url": "https://www.lululemon.co.jp/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # l_1 1.商品详细 2.color
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "valid-url": "//p[@class='hero-subtext' and text()='申し訳ありません。お探しのページが見つかりませんでした。']", "data-color-title": "//div[@class='color-group']//button[contains(@class, 'selected')]" },
+                # l_2size遍历
+                "actions": [
+                  {
+                    "url": "",
+                    "action_type": "dynamic",
+                    "action": "list",
+                    "path": { "aria-label": "//div[@id='size']/div/span/input[contains(@class, 'options-select') and not(contains(@class, 'disabled'))]", "value": "//div[@id='size']/div/span/input[contains(@class, 'options-select') and not(contains(@class, 'disabled'))]", "data-attr-value": "//div[@id='size']/div/span/input[contains(@class, 'options-select') and not(contains(@class, 'disabled'))]" },
+                    # l_3sku api
+                    "actions": [
+                      {
+                        "url": "%value%",
+                        "action_type": "dynamic",
+                        "action": "get",
+                        "path": { "sku": "//pre/text()" },
+                        # l_4 stock api
                         "actions": [
-                            {
-                                "url": "https://www.patagonia.jp/search/?q=%item_code%",
-                                "action_type": "dynamic",
-                                "action": "click and get",
-                                "path": {"data-variation-group-id": "//li[@class='product-tile__bullet']/button", "color-button": "//li[@class='product-tile__bullet']/button", "item_url":"//div[contains(@class, 'product-tile__cover') and contains(@data-color, '%color%')]/a", "check-product-exists":"//div[@class='no-search-results-header']"},
-                                # l_1size遍历，color
-                                "actions": [
-                                    {
-                                        "url": "%item_url%",
-                                        "action_type": "dynamic",
-                                        "action": "list",
-                                        # 网站上不论该商品是不是有货，都要读取直营店库存2025/04/14"path": {"data-size": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label[not(contains(@class, 'is-disabled'))]", "data-size-url": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label[not(contains(@class, 'is-disabled'))]", "data-color": "//button[contains(@class,'product-swatch selected')]"},
-                                        "path": {"data-size": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label", "data-size-url": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label", "data-color": "//button[contains(@class,'product-swatch selected')]"},
-                                        # l_2sku api
-                                        "actions": [
-                                            {
-                                                "url": "%data-size-url%",
-                                                "action_type": "dynamic",
-                                                "action": "get",
-                                                "path": {"sku": "//pre/text()", "price": "//pre/text()"},
-                                                # l_3stock api
-                                                "actions": [
-                                                    {
-                                                        "url": "https://www.patagonia.jp/on/demandware.store/Sites-patagonia-jp-Site/ja_JP/Modal-Get?id=storeSelect&locationChange=true&pdp=true&products=%sku_id%%3A1",
-                                                        "action_type": "dynamic",
-                                                        "action": "get",
-                                                        "path": {"parent":"//div[@class='card-body ']", "data-store-id": ".//div[@class='col store-name']", "store-name":".//div[@class='col store-name']/a", "stock-value":".//div[@class='row store-stock-status']//div[@class='store-availability-message']"},
-                                                    },
-                                                ]
-                                            },
-                                        ]
-                                    }
-                                ]
-                            },
+                          {
+                            "url": "https://www.lululemon.co.jp/on/demandware.store/Sites-JP-Site/ja_JP/InStores-FindStores?lat=34.6654311&long=135.4580466&pid=%sku%",
+                            "action_type": "dynamic",
+                            "action": "get",
+                            # available:在庫ありonlyfewleft:在庫わずか
+                            "path": { "stock": "//pre/text()" },
+                          }
                         ]
-                    },
-                    {
-                        "object": "replenish",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"modal-close":"//button[@class='cta-circle cta-circle-light  cta-close-x cta-close-x-light search-overlay__close-cta']", "stock":"//div[@class='buy-config__cta-btn-group']/button[contains(@class, 'btn btn-lg btn-dark') and not(contains(@class, 'd-none'))]"},
-                            },
-                        ]
-                    }
+                      }
+                    ]
+                  }
                 ]
-            }
+              }
+            ]
+          },
+          {
+            "object": "octoparse",
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "path": { "color-data-attr-value": "//div[@class='color-group']//div[@class='pdp-swatches']/button/span", "size-data-attr-value": "//div[@data-attr='size']//input[@type='radio']" },
+                # stock api
+                "actions": [
+                  {
+                    "url": "https://www.lululemon.co.jp/on/demandware.store/Sites-JP-Site/ja_JP/Product-Variation?dwvar_%code%_color=%color%&dwvar_%code%_size=%size%&pid=%code%&quantity=1",
+                    "action_type": "dynamic",
+                    "action": "get",
+                    "path": { "stock": "//pre/text()" },
+                  }
+                ]
+              }
+            ]
+          },
         ]
-    },
-    {
-        "brand": "kagami",
-        "targets":[
-            {
-                "host": "rakuten",
-                "url": "https://www.rakuten.co.jp/",
-                "catalog": "glass",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
+      },
+    ]
+  },
+  {
+    "brand": "patagonia",
+    "targets": [
+      {
+        "host": "patagonia",
+        "url": "https://www.patagonia.jp/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品检索
+            "actions": [
+              {
+                "url": "https://www.patagonia.jp/search/?q=%item_code%",
+                "action_type": "dynamic",
+                "action": "click and get",
+                "path": { "data-variation-group-id": "//li[@class='product-tile__bullet']/button", "color-button": "//li[@class='product-tile__bullet']/button", "item_url": "//div[contains(@class, 'product-tile__cover') and contains(@data-color, '%color%')]/a", "check-product-exists": "//div[@class='no-search-results-header']" },
+                # l_1size遍历，color
+                "actions": [
+                  {
+                    "url": "%item_url%",
+                    "action_type": "dynamic",
+                    "action": "list",
+                    # 网站上不论该商品是不是有货，都要读取直营店库存2025/04/14"path": {"data-size": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label[not(contains(@class, 'is-disabled'))]", "data-size-url": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label[not(contains(@class, 'is-disabled'))]", "data-color": "//button[contains(@class,'product-swatch selected')]"},
+                    "path": { "data-size": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label", "data-size-url": "//div[contains(@class,'custom-input custom-input__group select-size bisn-enabled')]/label", "data-color": "//button[contains(@class,'product-swatch selected')]" },
+                    # l_2sku api
+                    "actions": [
+                      {
+                        "url": "%data-size-url%",
+                        "action_type": "dynamic",
+                        "action": "get",
+                        "path": { "sku": "//pre/text()", "price": "//pre/text()" },
+                        # l_3stock api
                         "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"stock":"//div[text()='この商品は売り切れです']", "price":"//*[@id='floatingCartContainer']/div/div/div/div[1]/div[2]/div/div/div[2]"},
-                            },
+                          {
+                            "url": "https://www.patagonia.jp/on/demandware.store/Sites-patagonia-jp-Site/ja_JP/Modal-Get?id=storeSelect&locationChange=true&pdp=true&products=%sku_id%%3A1",
+                            "action_type": "dynamic",
+                            "action": "get",
+                            "path": { "parent": "//div[@class='card-body ']", "data-store-id": ".//div[@class='col store-name']", "store-name": ".//div[@class='col store-name']/a", "stock-value": ".//div[@class='row store-stock-status']//div[@class='store-availability-message']" },
+                          },
                         ]
-                    }
+                      },
+                    ]
+                  }
                 ]
-            },
+              },
+            ]
+          },
+          {
+            "object": "replenish",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "modal-close": "//button[@class='cta-circle cta-circle-light  cta-close-x cta-close-x-light search-overlay__close-cta']", "stock": "//div[@class='buy-config__cta-btn-group']/button[contains(@class, 'btn btn-lg btn-dark') and not(contains(@class, 'd-none'))]" },
+              },
+            ]
+          }
         ]
-    },
-    {
-        "brand": "uniqlo",
-        "targets":[
-            {
-                "host": "uniqlo",
-                "url": "https://www.uniqlo.com/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品检索
-                        "actions": [
-                            {
-                                "url": "https://www.uniqlo.com/jp/ja/search?q=%item_code%",
-                                "action_type": "dynamic",
-                                "action": "click and get",
-                                "path": {"check-product-exists":"//p[text()='該当する商品がありませんでした。']", "item_click":"//div[@role='button']//div[contains(@class, 'swiper-slide') and contains(@class, 'swiper-slide-active')]"},
-                                # l_1size遍历，color
-                                "actions": [
-                                    {
-                                        "url": "",
-                                        "action_type": "dynamic",
-                                        "action": "list",
-                                        "path": {"size-id-value": "//div[contains(@class,'size-chip-wrapper')]/button", "color-id-value": "//ul[@data-testid='ITOContentAlignment']//button[contains(@class, 'chip') and contains(@class, 'image-chip-large')]", "price": "//p[@class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-primary-dark fr-ec-text-transform-normal' or @class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-promotional fr-ec-text-transform-normal']"},
-                                        # l_2sku api
-                                        "actions": [
-                                            {
-                                                "url": "https://www.uniqlo.com/jp/api/commerce/v5/ja/products/%code%/price-groups/%code2%/l2s?withPrices=true&withStocks=false&includePreviousPrice=false&httpFailure=true",
-                                                "action_type": "dynamic",
-                                                "action": "get",
-                                                "path": {"l2Id": "//pre/text()"},
-                                                # l_3stock api
-                                                "actions": [
-                                                    {
-                                                        "url": "https://www.uniqlo.com/jp/api/commerce/v5/ja/l2s/%l2Id%/stores?keyword=%E6%96%B0%E5%AE%BF&unit=km&priceGroup=00&limit=6&httpFailure=true",
-                                                        "action_type": "dynamic",
-                                                        "action": "get",
-                                                        "path": {"stock":"//pre/text()"},
-                                                    },
-                                                ]
-                                            },
-                                        ]
-                                    }
-                                ]
-                            },
-                        ]
-                    },
-                    {
-                        "object": "replenish",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"price":"//p[@class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-primary-dark fr-ec-text-transform-normal' or @class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-promotional fr-ec-text-transform-normal']", "stock":"//div[@class='fr-ec-mb-spacer-8']//p[@class='fr-ec-hint-text fr-ec-hint-text--standard fr-ec-hint-text--color-secondary fr-ec-text-align-left fr-ec-text-transform-normal']"},
-                            },
-                        ]
-                    }
-                ]
-            },
+      },
+      {
+        "host": "localsonlytcg",
+        "url": "https://localsonlytcg.jp/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品检索
+            "actions": [
+              {
+                "url": "https://localsonlytcg.jp/search?q=%item_code%&options%5Bprefix%5D=last&type=product",
+                "action_type": "static",
+                "action": "get",
+                "path": { "search_result": "//h1[@class='page-header text-center']" },
+              }
+            ],
+          }
         ]
-    },
-    {
-        "brand": "converse",
-        "targets":[
-            {
-                "host": "rakuten/abc-mart",
-                "url": "https://www.rakuten.co.jp/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"parent":"//button[contains(@class, 'selected') and contains(@aria-label, 'cm')]", "price":".//span/div/div/div[2]", "stock":".//span/div/div/div[3]/div[2]"},
-                            },
-                        ]
-                    }
-                ]
-            },
-            {
-                "host": "yahoo/ZOZOTOWN",
-                "url": "https://www.rakuten.co.jp/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"color":"//div[span[text()='カラー']]/ul/li[contains(@class, 'styles_isSelected')]//span", "price":"//div[@id='prcdsp']//p[@itemprop='price']", "parent":"//div[span[text()='サイズ']]/ul/li", "size":".//span", "stock":".//p[1]"},
-                            },
-                        ]
-                    }
-                ]
-            },
+      }
+    ]
+  },
+  {
+    "brand": "kagami",
+    "targets": [
+      {
+        "host": "rakuten",
+        "url": "https://www.rakuten.co.jp/",
+        "catalog": "glass",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "stock": "//div[text()='この商品は売り切れです']", "price": "//*[@id='floatingCartContainer']/div/div/div/div[1]/div[2]/div/div/div[2]" },
+              },
+            ]
+          }
         ]
-    },
-    {
-        "brand": "descente",
-        "targets":[
-            {
-                "host": "descente",
-                "url": "https://store.descente.co.jp/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
+      },
+    ]
+  },
+  {
+    "brand": "uniqlo",
+    "targets": [
+      {
+        "host": "uniqlo",
+        "url": "https://www.uniqlo.com/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品检索
+            "actions": [
+              {
+                "url": "https://www.uniqlo.com/jp/ja/search?q=%item_code%",
+                "action_type": "dynamic",
+                "action": "click and get",
+                "path": { "check-product-exists": "//p[text()='該当する商品がありませんでした。']", "item_click": "//div[@role='button']//div[contains(@class, 'swiper-slide') and contains(@class, 'swiper-slide-active')]" },
+                # l_1size遍历，color
+                "actions": [
+                  {
+                    "url": "",
+                    "action_type": "dynamic",
+                    "action": "list",
+                    "path": { "size-id-value": "//div[contains(@class,'size-chip-wrapper')]/button", "color-id-value": "//ul[@data-testid='ITOContentAlignment']//button[contains(@class, 'chip') and contains(@class, 'image-chip-large')]", "price": "//p[@class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-primary-dark fr-ec-text-transform-normal' or @class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-promotional fr-ec-text-transform-normal']" },
+                    # l_2sku api
+                    "actions": [
+                      {
+                        "url": "https://www.uniqlo.com/jp/api/commerce/v5/ja/products/%code%/price-groups/%code2%/l2s?withPrices=true&withStocks=false&includePreviousPrice=false&httpFailure=true",
+                        "action_type": "dynamic",
+                        "action": "get",
+                        "path": { "l2Id": "//pre/text()" },
+                        # l_3stock api
                         "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"parent":"//ul[@class='sizeConfigGroup']/li/div[@class='wrap_size_stock']", "size":".//div[@class='size']", "stock":".//div[@class='stock']/span", "price":"//*[@id='mrkSalesPrice']"},
-                            },
+                          {
+                            "url": "https://www.uniqlo.com/jp/api/commerce/v5/ja/l2s/%l2Id%/stores?keyword=%E6%96%B0%E5%AE%BF&unit=km&priceGroup=00&limit=6&httpFailure=true",
+                            "action_type": "dynamic",
+                            "action": "get",
+                            "path": { "stock": "//pre/text()" },
+                          },
                         ]
-                    }
+                      },
+                    ]
+                  }
                 ]
-            },
+              },
+            ]
+          },
+          {
+            "object": "replenish",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "price": "//p[@class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-primary-dark fr-ec-text-transform-normal' or @class='fr-ec-price-text fr-ec-price-text--large fr-ec-price-text--color-promotional fr-ec-text-transform-normal']", "stock": "//div[@class='fr-ec-mb-spacer-8']//p[@class='fr-ec-hint-text fr-ec-hint-text--standard fr-ec-hint-text--color-secondary fr-ec-text-align-left fr-ec-text-transform-normal']" },
+              },
+            ]
+          }
         ]
-    },
-    {
-        "brand": "salomon",
-        "targets":[
-            {
-                "host": "salomon",
-                "url": "https://salomon.jp/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"stock":"//label[@data-variant-id='%variant%' and not(contains(@class, 'no_stock'))]", "price":"//span[@class='price-item price-item--regular']", "color":"//div[@id='productColorName']", "size":"//label[@data-variant-id='%variant%']"},
-                            },
-                        ]
-                    }
-                ]
-            },
+      },
+    ]
+  },
+  {
+    "brand": "converse",
+    "targets": [
+      {
+        "host": "rakuten/abc-mart",
+        "url": "https://www.rakuten.co.jp/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "parent": "//button[contains(@class, 'selected') and contains(@aria-label, 'cm')]", "price": ".//span/div/div/div[2]", "stock": ".//span/div/div/div[3]/div[2]" },
+              },
+            ]
+          }
         ]
-    },
-    {
-        "brand": "onitsukatiger",
-        "targets":[
-            {
-                "host": "onitsukatiger",
-                "url": "https://www.onitsukatiger.com/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"stock":"//div[contains(@class, 'swatch-option text')]", "having_stock":"product-addtocart-button", "price":"//div[@class='product-info-price']/div[@class='price-box price-final_price']//span[@class='price']", "color":"//*[@id='product-options-wrapper']/div/div/div[1]/span[2]", "size":"data-option-label"},
-                            },
-                        ]
-                    }
-                ]
-            },
+      },
+      {
+        "host": "yahoo/ZOZOTOWN",
+        "url": "https://www.rakuten.co.jp/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "color": "//div[span[text()='カラー']]/ul/li[contains(@class, 'styles_isSelected')]//span", "price": "//div[@id='prcdsp']//p[@itemprop='price']", "parent": "//div[span[text()='サイズ']]/ul/li", "size": ".//span", "stock": ".//p[1]" },
+              },
+            ]
+          }
         ]
-    },
-    {
-        "brand": "gregory",
-        "targets":[
-            {
-                "host": "supersports",
-                "url": "https://www.supersports.com/",
-                "catalog": "backpacks",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"stock":"//div[contains(@class,'button-block')]/button[text()='カートに追加']", "price":"//div[contains(@class, 'price-detail')]/strong"},
-                            },
-                        ]
-                    }
-                ]
-            },
+      },
+    ]
+  },
+  {
+    "brand": "descente",
+    "targets": [
+      {
+        "host": "descente",
+        "url": "https://store.descente.co.jp/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "parent": "//ul[@class='sizeConfigGroup']/li/div[@class='wrap_size_stock']", "size": ".//div[@class='size']", "stock": ".//div[@class='stock']/span", "price": "//*[@id='mrkSalesPrice']" },
+              },
+            ]
+          }
         ]
-    },
-    {
-        "brand": "crocs",
-        "targets":[
-            {
-                "host": "yahoo/fam",
-                "url": "https://store.shopping.yahoo.co.jp/famshoe/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"color":"//div[contains(@class, 'styles_optionList')]/span[text()='カラー']/following-sibling::ul/li/label/div/span", "parent":"//div[contains(@class, 'styles_optionList')]/span[text()='サイズ']/following-sibling::ul/li/label/div", "size":"./span", "stock":"./p[contains(@class, 'stockText')]", "price":"//div[contains(@class, 'priceWrap')]/p[contains(@itemprop, 'price')]"},
-                            },
-                        ]
-                    }
-                ]
-            },
+      },
+    ]
+  },
+  {
+    "brand": "salomon",
+    "targets": [
+      {
+        "host": "salomon",
+        "url": "https://salomon.jp/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "stock": "//label[@data-variant-id='%variant%' and not(contains(@class, 'no_stock'))]", "price": "//span[@class='price-item price-item--regular']", "color": "//div[@id='productColorName']", "size": "//label[@data-variant-id='%variant%']" },
+              },
+            ]
+          }
         ]
-    },
-    {
-        "brand": "arcteryx",
-        "targets":[
-            {
-                "host": "ARKnets",
-                "url": "https://www.arknets.co.jp/",
-                "catalog": "Bag",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"iframe":"buyee-bcFrame", "close_iframe":"bcIntro__closeBtn", "close":"//section/button", "stock":"//div[@class='block-variation-stock-info']", "size":"//div[@class='block-variation-size-info ']"},
-                            },
-                        ]
-                    }
-                ]
-            },
-            {
-                "host": "rakuten/WAIPER",
-                "url": "https://www.rakuten.co.jp/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"out-of-stock":"//button[contains(@class, 'selected') and .//div[text()='売り切れ']]", "size":"//span[./div/span[text()='サイズ']]/div[2]/span", "color":"//span[./div/span[text()='カラー']]/div[2]/span"},
-                            },
-                        ]
-                    }
-                ]
-            },
-            {
-                "host": "yahoo/TOKIA",
-                "url": "https://store.shopping.yahoo.co.jp/zakka-tokia",
-                "catalog": "Bag",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"stock":"//form[@name='addCart']//button/span/span", "price":"//form[@name='addCart']//p[@itemprop='price']"},
-                            },
-                        ]
-                    }
-                ]
-            },
+      },
+    ]
+  },
+  {
+    "brand": "onitsukatiger",
+    "targets": [
+      {
+        "host": "onitsukatiger",
+        "url": "https://www.onitsukatiger.com/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "stock": "//div[contains(@class, 'swatch-option text')]", "having_stock": "product-addtocart-button", "price": "//div[@class='product-info-price']/div[@class='price-box price-final_price']//span[@class='price']", "color": "//*[@id='product-options-wrapper']/div/div/div[1]/span[2]", "size": "data-option-label" },
+              },
+            ]
+          }
         ]
-    },
-    {
-        "brand": "hokaoneone",
-        "targets":[
-            {
-                "host": "rakuten/sneaker-bouz",
-                "url": "https://www.rakuten.co.jp/",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"out-of-stock":"//button[contains(@class, 'selected') and .//div[contains(@class, 'text-display') and contains(text(), '再入荷')]]", "size":"//span[./div/span[text()='サイズ(cm)']]/div[2]/span", "price":"//table[@id='rakutenLimitedId_cart']/tbody/tr[2]//div[contains(@class, 'value')]"},
-                            },
-                        ]
-                    }
-                ]
-            },
+      },
+    ]
+  },
+  {
+    "brand": "gregory",
+    "targets": [
+      {
+        "host": "supersports",
+        "url": "https://www.supersports.com/",
+        "catalog": "backpacks",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "stock": "//div[contains(@class,'button-block')]/button[text()='カートに追加']", "price": "//div[contains(@class, 'price-detail')]/strong" },
+              },
+            ]
+          }
         ]
-    },
-    {
-        "brand": "keen",
-        "targets":[
-            {
-                "host": "murasaki",
-                "url": "https://www.murasaki.jp//",
-                "catalog": "clothes",
-                "objects": [
-                    {
-                        "object": "price",
-                        # 1.商品
-                        "actions": [
-                            {
-                                "url": "%url%",
-                                "action_type": "dynamic",
-                                "action": "get",
-                                "path": {"size-list":"//ul[@class='cart-area--size__list']/li", "color":"//div[@class='cart-area--add__status-text js-contentArea-message']/span", "size":"data-size", "stock":"data-stock-state"},
-                            },
-                        ]
-                    }
-                ]
-            },
+      },
+    ]
+  },
+  {
+    "brand": "crocs",
+    "targets": [
+      {
+        "host": "yahoo/fam",
+        "url": "https://store.shopping.yahoo.co.jp/famshoe/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "color": "//div[contains(@class, 'styles_optionList')]/span[text()='カラー']/following-sibling::ul/li/label/div/span", "parent": "//div[contains(@class, 'styles_optionList')]/span[text()='サイズ']/following-sibling::ul/li/label/div", "size": "./span", "stock": "./p[contains(@class, 'stockText')]", "price": "//div[contains(@class, 'priceWrap')]/p[contains(@itemprop, 'price')]" },
+              },
+            ]
+          }
         ]
-    },
+      },
+    ]
+  },
+  {
+    "brand": "arcteryx",
+    "targets": [
+      {
+        "host": "ARKnets",
+        "url": "https://www.arknets.co.jp/",
+        "catalog": "Bag",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "iframe": "buyee-bcFrame", "close_iframe": "bcIntro__closeBtn", "close": "//section/button", "stock": "//div[@class='block-variation-stock-info']", "size": "//div[@class='block-variation-size-info ']" },
+              },
+            ]
+          }
+        ]
+      },
+      {
+        "host": "rakuten/WAIPER",
+        "url": "https://www.rakuten.co.jp/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "out-of-stock": "//button[contains(@class, 'selected') and .//div[text()='売り切れ']]", "size": "//span[./div/span[text()='サイズ']]/div[2]/span", "color": "//span[./div/span[text()='カラー']]/div[2]/span" },
+              },
+            ]
+          }
+        ]
+      },
+      {
+        "host": "yahoo/TOKIA",
+        "url": "https://store.shopping.yahoo.co.jp/zakka-tokia",
+        "catalog": "Bag",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "stock": "//form[@name='addCart']//button/span/span", "price": "//form[@name='addCart']//p[@itemprop='price']" },
+              },
+            ]
+          }
+        ]
+      },
+    ]
+  },
+  {
+    "brand": "hokaoneone",
+    "targets": [
+      {
+        "host": "rakuten/sneaker-bouz",
+        "url": "https://www.rakuten.co.jp/",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "out-of-stock": "//button[contains(@class, 'selected') and .//div[contains(@class, 'text-display') and contains(text(), '再入荷')]]", "size": "//span[./div/span[text()='サイズ(cm)']]/div[2]/span", "price": "//table[@id='rakutenLimitedId_cart']/tbody/tr[2]//div[contains(@class, 'value')]" },
+              },
+            ]
+          }
+        ]
+      },
+    ]
+  },
+  {
+    "brand": "keen",
+    "targets": [
+      {
+        "host": "murasaki",
+        "url": "https://www.murasaki.jp//",
+        "catalog": "clothes",
+        "objects": [
+          {
+            "object": "price",
+            # 1.商品
+            "actions": [
+              {
+                "url": "%url%",
+                "action_type": "dynamic",
+                "action": "get",
+                "path": { "size-list": "//ul[@class='cart-area--size__list']/li", "color": "//div[@class='cart-area--add__status-text js-contentArea-message']/span", "size": "data-size", "stock": "data-stock-state" },
+              },
+            ]
+          }
+        ]
+      },
+    ]
+  },
 ]
