@@ -1,3 +1,5 @@
+import re
+
 from util import common_util
 
 MONBELL_SIZE_DICT = ["L",
@@ -344,3 +346,86 @@ def keen_size_convert(size, size_key, encode):
             else:
                 jp_size = None
     return jp_size
+
+def onitsukatiger_build_full_conversion_table():
+    table = {}
+    common_sizes = [
+        (12, 19.5), (13, 21), (13.5, 22.5), (14.5, 23.5), (15, 25),
+        (16, 26), (17, 27), (17.5, 28.5), (18.5, 30), (19.5, 31.5),
+        (20, 32.5), (20.5, 33), (21, 33.5), (21.5, 34.5), (22, 35),
+        (23, 37), (23.5, 37.5), (24, 38), (24.5, 39), (25, 39.5),
+        (25.5, 40.5), (26, 41.5), (26.5, 42), (27, 42.5), (27.5, 43.5),
+        (28, 44), (28.25, 44.5), (28.5, 45), (29, 46), (29.5, 46.5),
+        (30, 47), (30.5, 48), (30.75, 48.5), (31, 49)
+    ]
+    for jp, eu in common_sizes:
+        table[eu] = {'男款': jp, '女款': jp}
+
+    table[35.5] = {'男款': 0, '女款': 22.5}
+    table[36] = {'男款': 22.5, '女款': 22.75}
+    table[40] = {'男款': 25.25, '女款': 25.5}
+    table[40.5] = {'男款': 25.5, '女款': 25.75}
+    return table
+
+def onitsukatiger_parse_specs_optimized(raw_spec_cell, gender_flag):
+    results = None
+    conv_table = onitsukatiger_build_full_conversion_table()
+
+
+    if isinstance(raw_spec_cell, str):
+        raw_cell = raw_spec_cell.strip()
+
+        # --- 1. 尝试匹配 JP 原生数据 ---
+        jp_matches = re.findall(r'JP\s*(\d+(?:\.\d+)?)', raw_cell, re.IGNORECASE)
+        if jp_matches: # 如果匹配到了 JP
+            for val in jp_matches:
+                size_num = float(val)
+                size_str = f"{size_num:g}"
+                results = {
+                    'Raw_Source': raw_cell,
+                    'Standard': 'JP',
+                    'Size': size_str
+                }
+        else:
+            # --- 2. 尝试匹配 EU 数据 ---
+            eu_matches = re.findall(r'EU\s*(\d+(?:\.\d+)?)', raw_cell, re.IGNORECASE)
+            if eu_matches: # 如果匹配到了 EU
+                for val in eu_matches:
+                    eu_num = float(val)
+                    if eu_num in conv_table:
+                        jp_size = conv_table[eu_num][gender_flag]
+                        size_str = f"{jp_size:g}"
+                        results = {
+                            'Raw_Source': raw_cell,
+                            'Standard': 'JP',
+                            'Size': size_str
+                        }
+                    else:
+                        results = {
+                            'Raw_Source': raw_cell,
+                            'Standard': 'ERROR',
+                            'Size': f'EU{eu_num}_Not_Found'
+                        }
+            else:
+                # --- 3. 尝试匹配 SIZE 110/120/130/140 儿童码 ---
+                size_matches = re.findall(r'SIZE\s*(\d+)', raw_cell, re.IGNORECASE)
+                if size_matches: # 如果匹配到了 SIZE
+                    for val in size_matches:
+                        size_out = int(val)
+                        size_str = str(int(val))
+                        results = {
+                            'Raw_Source': raw_cell,
+                            'Standard': 'KIDS',
+                            'Size': size_str
+                        }
+                else:
+                    # --- 4. 尝试匹配 S/M/L 时尚码 ---
+                    fashions = re.findall(r'\b(S|M|L|XL|XXL|XS)\b', raw_cell, re.IGNORECASE)
+                    for code in fashions:
+                        results = {
+                            'Raw_Source': raw_cell,
+                            'Standard': 'FASHION',
+                            'Size': code.upper()
+                        }
+
+    return results

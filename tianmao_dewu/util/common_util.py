@@ -95,3 +95,16 @@ def calculate_bid_price(cost_price, base_multiplier=1.15, round_mode='ceil'):
         raise ValueError("round_mode 必须是 'ceil' 或 'round'")
 
     return int(final_price)
+
+def normalize_size(val):
+    """标准化尺码：去除数字的 .0 后缀，保留字母原样"""
+    if isinstance(val, float):
+        val = str(val)
+    else:
+        val = str(val).strip()
+
+    try:
+        num = float(val)
+        return f"{num:g}"  # 24.0 -> "24", 24.5 -> "24.5"
+    except ValueError:
+        return val  # "XL" -> "XL"

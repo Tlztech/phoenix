@@ -28,7 +28,7 @@ class ExcelUtil:
         result = {}
 
         for record in records:
-            key = record[group_column]
+            key = record[group_column].upper()
             if key not in result:
                 result[key] = []
             result[key].append(record)
