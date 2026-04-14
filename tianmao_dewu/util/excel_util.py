@@ -28,7 +28,9 @@ class ExcelUtil:
         result = {}
 
         for record in records:
-            key = record[group_column].upper()
+            value = record[group_column]
+            # 将值转换为字符串后再调用upper()，避免整数等类型报错
+            key = str(value).upper() if value is not None else ''
             if key not in result:
                 result[key] = []
             result[key].append(record)
