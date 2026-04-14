@@ -41,7 +41,7 @@
 ## 安装
 
 ```bash
-pip install -r lululemon_scrapling/requirements.txt
+pip install -r requirements.txt
 ```
 
 ## 用法
@@ -49,25 +49,25 @@ pip install -r lululemon_scrapling/requirements.txt
 默认读取 `lululemon_url.txt` 中的种子 URL：
 
 ```bash
-python lululemon_scrapling/main.py
+python main.py
 ```
 
 只跑 1 个分类页，并抓取前 5 个商品做测试：
 
 ```bash
-python lululemon_scrapling/main.py --seed-limit 1 --detail-limit 5
+python main.py --seed-limit 1 --detail-limit 5
 ```
 
 指定自定义分类页 URL：
 
 ```bash
-python lululemon_scrapling/main.py --seed-url "https://www.lululemon.co.jp/ja-jp/c/men" --seed-url "https://www.lululemon.co.jp/ja-jp/c/women/tops"
+python main.py --seed-url "https://www.lululemon.co.jp/ja-jp/c/men" --seed-url "https://www.lululemon.co.jp/ja-jp/c/women/tops"
 ```
 
 指定输出目录：
 
 ```bash
-python lululemon_scrapling/main.py --output-dir ./outputs
+python main.py --output-dir ./outputs
 ```
 
 ## 在当前机器上运行

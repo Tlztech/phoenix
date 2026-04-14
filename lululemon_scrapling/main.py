@@ -44,6 +44,10 @@ DIGITAL_DATA_PATTERN = re.compile(
     r"digitalData\.product\.push\((\{.*?\})\);",
     re.DOTALL,
 )
+SATELLITE_DATA_PATTERN = re.compile(
+    r"var\s+satelliteData\s*=\s*(\{.*?\});",
+    re.DOTALL,
+)
 JSON_LD_PATTERN = re.compile(
     r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
     re.IGNORECASE | re.DOTALL,
@@ -610,6 +614,20 @@ def extract_product_data(html: str) -> dict[str, Any] | None:
         raise RuntimeError(f"Failed to parse digitalData.product payload: {exc}") from exc
 
 
+def extract_satellite_data(html: str) -> dict[str, Any] | None:
+    match = SATELLITE_DATA_PATTERN.search(html)
+    if not match:
+        return None
+
+    payload = match.group(1)
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Failed to parse satelliteData payload: {exc}") from exc
+
+    return data if isinstance(data, dict) else None
+
+
 def extract_json_ld_variants(html: str, model: str) -> list[dict[str, Any]]:
     variants: list[dict[str, Any]] = []
     for match in JSON_LD_PATTERN.finditer(html):
@@ -702,6 +720,44 @@ def normalize_price(value: Any) -> str:
     return ""
 
 
+def build_variant_pricing_map(payload: dict[str, Any] | None) -> dict[str, dict[str, str]]:
+    if not payload:
+        return {}
+
+    linked_products = payload.get("linkedProduct", {})
+    variant_prices: dict[str, dict[str, str]] = {}
+
+    if isinstance(linked_products, dict):
+        variant_iterable = linked_products.values()
+    elif isinstance(linked_products, list):
+        variant_iterable = linked_products
+    else:
+        return {}
+
+    for variant in variant_iterable:
+        if not isinstance(variant, dict):
+            continue
+
+        sku = clean_text(str(variant.get("sku", "")).strip())
+        if not sku:
+            product_info = variant.get("productInfo", {})
+            if isinstance(product_info, dict):
+                sku = clean_text(str(product_info.get("sku", "")).strip())
+        if not sku:
+            continue
+
+        price_info = variant.get("price", {})
+        msrp = normalize_price(price_info.get("displayRegularPrice") or price_info)
+        display_price = normalize_price(price_info.get("displayPrice") or price_info)
+        discounted_price = display_price if display_price and display_price != msrp else ""
+        variant_prices[sku] = {
+            "msrp": msrp,
+            "discounted_price": discounted_price,
+        }
+
+    return variant_prices
+
+
 def availability_to_stock_status(value: str) -> str:
     lowered = value.lower()
     if lowered.endswith("/instock") or lowered == "instock":
@@ -725,6 +781,7 @@ def derive_quantity(stock_status: str) -> str:
 def build_rows_from_digital_data(
     product_type: str,
     product_data: dict[str, Any],
+    satellite_data: dict[str, Any] | None,
     fallback_title: str,
     model: str,
     u_model: str,
@@ -736,6 +793,7 @@ def build_rows_from_digital_data(
     msrp = normalize_price(price_info.get("displayRegularPrice") or price_info)
     display_price = normalize_price(price_info.get("displayPrice") or price_info)
     discounted_price = display_price if display_price and display_price != msrp else ""
+    variant_pricing = build_variant_pricing_map(satellite_data)
 
     linked_products = product_data.get("linkedProduct", [])
     rows: list[ProductRow] = []
@@ -745,6 +803,11 @@ def build_rows_from_digital_data(
         variant_info = variant.get("productInfo", {})
         attributes = variant.get("attributes", {})
         stock_status = str(attributes.get("stockStatus", "")).strip()
+        variant_sku = clean_text(str(variant_info.get("sku", "")).strip())
+        prices = variant_pricing.get(
+            variant_sku,
+            {"msrp": msrp, "discounted_price": discounted_price},
+        )
         rows.append(
             ProductRow(
                 type=product_type,
@@ -755,8 +818,8 @@ def build_rows_from_digital_data(
                 brand="lululemon",
                 color=clean_text(str(variant_info.get("color", "")).strip()),
                 size=clean_text(str(variant_info.get("size", "")).strip()),
-                msrp=msrp,
-                discounted_price=discounted_price,
+                msrp=prices["msrp"],
+                discounted_price=prices["discounted_price"],
                 stock_status=stock_status,
                 quantity=derive_quantity(stock_status),
             )
@@ -812,12 +875,21 @@ def build_rows(url: str, html: str) -> list[ProductRow]:
     product_type = extract_product_type(html)
     fallback_title = extract_title(html)
     product_data = extract_product_data(html)
+    satellite_data = extract_satellite_data(html)
     model = extract_model(html, url, product_data)
     color_code = extract_query_color_code(url)
     u_model = extract_u_model(html, color_code)
 
     if product_data:
-        rows = build_rows_from_digital_data(product_type, product_data, fallback_title, model, u_model, url)
+        rows = build_rows_from_digital_data(
+            product_type,
+            product_data,
+            satellite_data,
+            fallback_title,
+            model,
+            u_model,
+            url,
+        )
         if rows:
             return rows
 
