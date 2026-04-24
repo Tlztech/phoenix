@@ -167,7 +167,7 @@ def service():
                             dewu.update({
                                 excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'):
                                     round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))))})
-                        elif round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp')))) != round(
+                        elif round(float(str(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))).replace(" ", "").replace(",", ""))) != round(
                                 float(str(dewu.get(
                                     excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'))).replace(" ", "").replace(",",
                                                                                                             ""))):
@@ -182,7 +182,7 @@ def service():
                                             ",", "")))})
                             dewu.update({
                                 excel.DEWU_COLUMN_INDEX.get('采购成本(JPY)'):
-                                    round(float(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))))})
+                                    round(float(str(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('msrp'))).replace(" ", "").replace(",", "")))})
                         if int(tianmao.get(excel.TIANMAO_COLUMN_INDEX.get('quantity'))) == 0:
                             if dewu.get(excel.DEWU_COLUMN_INDEX.get('结果')):
                                 dewu.update({excel.DEWU_COLUMN_INDEX.get(
