@@ -299,6 +299,11 @@ def service():
         if isinstance(dewu_key, str):
             model, color_from_huohao = extract_model_and_color(dewu_key)
             # 1. 提取数字部分作为model
+            if not model:  # 检查model是否为空
+                # model为空时，执行下架逻辑
+                for dewu in dewu_value:
+                    dewu.update({excel.DEWU_COLUMN_INDEX.get('结果'): '没有model匹配到，下架'})
+                continue  # 跳过后续处理
             dewu_formatted_model = int(model)
             # print(f"货号 '{dewu_key}' -> color: '{color_value}'")
 
