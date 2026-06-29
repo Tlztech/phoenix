@@ -87,10 +87,15 @@ def fetch_patagonia_stock_static(item_code, sku_file):
                 item_url_path = action['path']['item_url'].replace('%color%', color_code.replace(code+'-', ''))
                 item_urls = tree.xpath(item_url_path + '/@href')
 
-                if not item_urls:
-                    return {'item_code': color_code, 'url': '商品链接未找到', 'sku': sku_file}
+                # 循环判断item_urls包含code+'.html'
+                item_url = None
+                for url in item_urls:
+                    if code + '.html' in url:
+                        item_url = url
+                        break
 
-                item_url = item_urls[0]
+                if not item_url:
+                    return {'item_code': color_code, 'url': '商品链接未找到', 'sku': sku_file}
 
                 # 4. 获取商品详情页
                 html_content = crawler_util.fetch_with_scrapling(item_url, config=scrapling_config)
