@@ -131,15 +131,20 @@ class QiniuImageProcessor:
             <html>
                 <head>
                     <style>
+                        /* inline-block容器宽度由最宽的表格决定，
+                           配合 table{{width:100%}} 让所有表格自适应到相同宽度 */
+                        .size-wrap {{
+                            display: inline-block;
+                        }}
                         table {{
                             border-collapse: collapse;
                             font-family: Arial, sans-serif;
+                            width: 100%;
                         }}
                         th, td {{
                             border: 1px solid #dddddd;
                             text-align: left;
                             padding: 8px;
-                            width: auto;
                         }}
                         th {{
                             background-color: #f2f2f2;
@@ -151,7 +156,9 @@ class QiniuImageProcessor:
                     </style>
                 </head>
                 <body>
+                    <div class="size-wrap">
                     {description}
+                    </div>
                 </body>
             </html>
             """
@@ -172,29 +179,30 @@ class QiniuImageProcessor:
                 # 打印找到的<table>元素数量
                 # print(f"找到的<table>数量: {len(tables)}")
                 
-                table_count = 0
-                
-                # 遍历这些<table>元素：
+                if not tables:
+                    raise Exception("页面中未找到table元素")
+
+                # 计算所有<table>的并集包围盒（表格是块级元素，纵向堆叠，
+                # 需要取所有表格的最小left/top和最大right/bottom）
+                left = top = None
+                right = bottom = None
                 for table in tables:
-                # 找到表格元素
-                    if table_count == 0 :
-                        # 获取表格位置和大小
-                        location = table.location
-                        size = table.size
-                        
-                        left = location['x']
-                        top = location['y']
-                        right = location['x'] + size['width']
-                        bottom = location['y'] + size['height']
-                        # print(f"<table>的left-top-rightbottom: {left}-{top}-{right}-{bottom}")
+                    location = table.location
+                    size = table.size
+
+                    t_left = location['x']
+                    t_top = location['y']
+                    t_right = location['x'] + size['width']
+                    t_bottom = location['y'] + size['height']
+
+                    if left is None:
+                        left, top, right, bottom = t_left, t_top, t_right, t_bottom
                     else:
-                        size = table.size
-                        
-                        right = right + size['width']
-                        # bottom = bottom + size['height']
-                        # print(f"<table>的left-top-rightbottom: {left}-{top}-{right}-{bottom}")
-                
-                    table_count += 1
+                        left = min(left, t_left)
+                        top = min(top, t_top)
+                        right = max(right, t_right)
+                        bottom = max(bottom, t_bottom)
+                    # print(f"<table>的left-top-rightbottom: {t_left}-{t_top}-{t_right}-{t_bottom}")
                     
                 # 截图并裁剪
                 png = driver.get_screenshot_as_png()
