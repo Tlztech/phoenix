@@ -8,8 +8,9 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from PIL import Image
 from io import BytesIO
-from qiniu import Auth, put_file, BucketManager
+from qiniu import Auth, put_file_v2, BucketManager, CdnManager
 import time
+import hashlib
 import traceback
 
 def validate_inputs():
@@ -50,14 +51,78 @@ def upload_to_qiniu(local_file_path, qiniu_file_name):
     token = q.upload_token(bucket_name, qiniu_file_name, 3600)
     
     # 上传文件
-    ret, info = put_file(token, qiniu_file_name, local_file_path)
+    ret, info = put_file_v2(token, qiniu_file_name, local_file_path)
     
     if info.status_code == 200:
         # 返回公网URL
         base_url = 'https://qncdn.sytlz.com'  # 替换为您的七牛云域名
-        return f"{base_url}/{qiniu_file_name}"
+        url = f"{base_url}/{qiniu_file_name}"
+
+        # 挂上文件内容hash。CDN刷新只能清边缘节点，终端用户浏览器里
+        # 缓存的旧图不受影响；URL变了才是新资源，浏览器必然重新请求。
+        # 用内容hash而不是时间戳：图没变时URL就不变，重跑脚本不会让
+        # 整批商品的sizeToImg字段产生无意义的变更。
+        # 统一用七牛返回的hash(etag)，和02exist复用已有图片时的取值保持一致，
+        # 否则同一个文件在两个脚本里会得到不同的URL。
+        content_hash = (ret or {}).get('hash')
+        if not content_hash:
+            with open(local_file_path, 'rb') as f:
+                content_hash = hashlib.md5(f.read()).hexdigest()
+
+        return f"{url}?v={content_hash[:12]}"
     else:
         raise Exception(f"七牛云上传失败: {info}")
+
+
+def refresh_cdn(brand_name, uploaded_urls):
+    """批量刷新CDN缓存
+
+    文件名固定为 {code}.jpg，覆盖上传后URL不变，不刷新的话
+    CDN边缘节点会一直返回旧图（商品页看到的还是上一版尺码表）。
+
+    七牛刷新配额是按条计数的：URL刷新 500条/天，目录刷新 10条/天。
+    所以整批跑完只刷一次目录，跟商品数量无关；目录刷新不可用时
+    再退回按URL刷（每次最多60条）。
+    """
+    if not uploaded_urls:
+        return
+
+    access_key = 'cBWnI5kLc3PwbeMkhcTVEQIF9dDnoUzLuY-6cuG9'
+    secret_key = 'hBo8wjRGkngB_xn2txneCYkD5FheUeok4MG_Frd3'
+    base_url = 'https://qncdn.sytlz.com'
+
+    cdn = CdnManager(Auth(access_key, secret_key))
+    target_dir = f"{base_url}/sizetoimg/{brand_name}/"
+
+    # 优先刷目录：一条配额搞定整批
+    try:
+        ret, info = cdn.refresh_dirs([target_dir])
+        if info.status_code == 200 and ret and ret.get('code') == 200:
+            print(f"CDN目录刷新成功: {target_dir} (今日剩余目录配额: {ret.get('dirSurplusDay')})")
+            return
+        print(f"CDN目录刷新未生效，改用URL刷新: {ret}")
+    except Exception as e:
+        print(f"CDN目录刷新失败，改用URL刷新: {e}")
+
+    # 退路：按URL刷，每批最多60条（去掉?v=版本号，刷的是文件本身）
+    plain_urls = [u.split('?')[0] for u in uploaded_urls]
+    failed = 0
+    for i in range(0, len(plain_urls), 60):
+        batch = plain_urls[i:i + 60]
+        try:
+            ret, info = cdn.refresh_urls(batch)
+            if info.status_code != 200 or not ret or ret.get('code') != 200:
+                failed += len(batch)
+                print(f"CDN刷新失败(不影响上传): {ret}")
+        except Exception as e:
+            failed += len(batch)
+            print(f"CDN刷新失败(不影响上传): {e}")
+
+    if failed:
+        print(f"共 {failed}/{len(plain_urls)} 个URL未刷新成功，"
+              f"可能已超今日配额，这些商品页可能仍显示旧图")
+    else:
+        print(f"CDN刷新完成: {len(plain_urls)} 个URL")
 
 
 def save_description_uili_as_image(description, current_code, temp_img_path):
@@ -172,6 +237,11 @@ def save_description_as_image(description, file_path):
                         border-collapse: collapse;
                         width: 100%;
                     }}
+                    /* 多个表格宽度一致且紧贴时会连成一张表，
+                       加间距把它们在视觉上分开 */
+                    table + table {{
+                        margin-top: 24px;
+                    }}
                     th, td {{
                         border: 1px solid #dddddd;
                         text-align: left;
@@ -201,7 +271,16 @@ def save_description_as_image(description, file_path):
         # 等待页面加载
         time.sleep(1)
         try:
-            # 找到所有的<table>元素
+            # 内容可能高于/宽于默认窗口(1920x1080)，截图只会截到视口大小，
+            # 导致下方表格被截掉。先把窗口撑到内容实际尺寸再截图。
+            content_width = driver.execute_script(
+                "return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);")
+            content_height = driver.execute_script(
+                "return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);")
+            driver.set_window_size(max(content_width + 100, 800), content_height + 100)
+            time.sleep(0.5)
+
+            # 找到所有的<table>元素（窗口尺寸变了，位置需要重新读取）
             tables = driver.find_elements(By.TAG_NAME, "table")
              
             # 打印找到的<table>元素数量
@@ -300,6 +379,7 @@ def process_excel(excel_file, current_brand, color_size_flag):
         previous_code = ''
         image_url = ''
         processed_count = 0
+        uploaded_urls = []  # 本次上传的所有URL，跑完统一刷新CDN
         
         # 定义品牌列表并预先转换为大写
         brands = [
@@ -353,7 +433,8 @@ def process_excel(excel_file, current_brand, color_size_flag):
                             # 上传到七牛云
                             qiniu_path = f"sizetoimg/{current_brand}/{current_code}.jpg"
                             image_url = upload_to_qiniu(temp_img_path, qiniu_path)
-                            
+                            uploaded_urls.append(image_url)
+
                             # 删除临时图片
                             os.remove(temp_img_path)
                         else:
@@ -373,6 +454,9 @@ def process_excel(excel_file, current_brand, color_size_flag):
             # 更新sizeToImg列
             df.at[index, 'sizeToImg'] = image_url
         
+        # 全部上传完成后，统一刷新一次CDN
+        refresh_cdn(current_brand, uploaded_urls)
+
         # 生成输出文件名
         output_path = generate_output_filename(excel_file)
         

@@ -7,7 +7,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from PIL import Image
 from io import BytesIO
-from qiniu import Auth, BucketManager, put_file
+from qiniu import Auth, BucketManager, put_file_v2, CdnManager
 import time
 import traceback
 from datetime import datetime
@@ -19,6 +19,7 @@ class QiniuImageProcessor:
         self.excel_file, self.brand_name, self.color_size_flag = self.validate_inputs()
         self.bucket, self.auth, self.bucket_name, self.domain = self.init_qiniu()
         self.existing_urls = self.get_existing_images()
+        self.uploaded_urls = []  # 本次上传的所有URL，跑完统一刷新CDN
         self.process_excel()
 
     def print_time_used(self, message):
@@ -84,6 +85,9 @@ class QiniuImageProcessor:
                     if item['key'].endswith('.jpg'):
                         filename = os.path.basename(item['key'])
                         url = f"{self.domain}/{item['key']}"
+                        # 挂上内容hash击穿浏览器缓存，取值方式和上传时保持一致
+                        if item.get('hash'):
+                            url = f"{url}?v={item['hash'][:12]}"
                         url_dict[filename] = url
                         # print(f"文件名: {item['key']}    URL: {url}")  # 注意这里的key是完整的文件路径，包括前缀
                 
@@ -141,6 +145,11 @@ class QiniuImageProcessor:
                             font-family: Arial, sans-serif;
                             width: 100%;
                         }}
+                        /* 多个表格宽度一致且紧贴时会连成一张表，
+                           加间距把它们在视觉上分开 */
+                        table + table {{
+                            margin-top: 24px;
+                        }}
                         th, td {{
                             border: 1px solid #dddddd;
                             text-align: left;
@@ -173,7 +182,16 @@ class QiniuImageProcessor:
             time.sleep(1)  # 等待页面加载
             
             try:
-                # 找到所有的<table>元素
+                # 内容可能高于/宽于默认窗口，截图只会截到视口大小，
+                # 导致下方表格被截掉。先把窗口撑到内容实际尺寸再截图。
+                content_width = driver.execute_script(
+                    "return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);")
+                content_height = driver.execute_script(
+                    "return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);")
+                driver.set_window_size(max(content_width + 100, 800), content_height + 100)
+                time.sleep(0.5)
+
+                # 找到所有的<table>元素（窗口尺寸变了，位置需要重新读取）
                 tables = driver.find_elements(By.TAG_NAME, "table")
                  
                 # 打印找到的<table>元素数量
@@ -328,17 +346,70 @@ class QiniuImageProcessor:
                 os.remove(temp_html)
     
     
+    def refresh_cdn(self):
+        """批量刷新CDN缓存
+
+        文件名固定为 {code}.jpg，覆盖上传后URL不变，不刷新的话
+        CDN边缘节点会一直返回旧图（商品页看到的还是上一版尺码表）。
+
+        七牛刷新配额是按条计数的：URL刷新 500条/天，目录刷新 10条/天。
+        所以整批跑完只刷一次目录，跟商品数量无关；目录刷新不可用时
+        再退回按URL刷（每次最多60条）。
+        """
+        if not self.uploaded_urls:
+            return
+
+        cdn = CdnManager(self.auth)
+        target_dir = f"{self.domain}/sizetoimg/{self.brand_name}/"
+
+        # 优先刷目录：一条配额搞定整批
+        try:
+            ret, info = cdn.refresh_dirs([target_dir])
+            if info.status_code == 200 and ret and ret.get('code') == 200:
+                print(f"CDN目录刷新成功: {target_dir} (今日剩余目录配额: {ret.get('dirSurplusDay')})")
+                return
+            print(f"CDN目录刷新未生效，改用URL刷新: {ret}")
+        except Exception as e:
+            print(f"CDN目录刷新失败，改用URL刷新: {e}")
+
+        # 退路：按URL刷，每批最多60条（去掉?v=版本号，刷的是文件本身）
+        plain_urls = [u.split('?')[0] for u in self.uploaded_urls]
+        failed = 0
+        for i in range(0, len(plain_urls), 60):
+            batch = plain_urls[i:i + 60]
+            try:
+                ret, info = cdn.refresh_urls(batch)
+                if info.status_code != 200 or not ret or ret.get('code') != 200:
+                    failed += len(batch)
+                    print(f"CDN刷新失败(不影响上传): {ret}")
+            except Exception as e:
+                failed += len(batch)
+                print(f"CDN刷新失败(不影响上传): {e}")
+
+        if failed:
+            print(f"共 {failed}/{len(plain_urls)} 个URL未刷新成功，"
+                  f"可能已超今日配额，这些商品页可能仍显示旧图")
+        else:
+            print(f"CDN刷新完成: {len(plain_urls)} 个URL")
+
     def upload_image_to_qiniu(self, local_path, code):
         """上传图片到七牛云"""
         qiniu_path = f"sizetoimg/{self.brand_name}/{code}.jpg"
         # auth = Auth(self.bucket.auth.access_key, self.bucket.auth.secret_key)
         token = self.auth.upload_token(self.bucket_name, qiniu_path, 3600)
         
-        ret, info = put_file(token, qiniu_path, local_path)
+        ret, info = put_file_v2(token, qiniu_path, local_path)
         
         if info.status_code == 200:
             url = f"{self.domain}/{qiniu_path}"
+
+            # 挂上内容hash击穿浏览器缓存，取值和get_existing_images保持一致
+            content_hash = (ret or {}).get('hash')
+            if content_hash:
+                url = f"{url}?v={content_hash[:12]}"
+
             self.existing_urls[f"{code}.jpg"] = url  # 更新本地缓存
+            self.uploaded_urls.append(url)  # 跑完统一刷新CDN
             return url
         else:
             raise Exception(f"上传失败: {info}")
@@ -440,6 +511,9 @@ class QiniuImageProcessor:
                     print(f"处理第 {index+1} 行时出错: {str(e)}")
                     continue
             
+            # 全部上传完成后，统一刷新一次CDN
+            self.refresh_cdn()
+
             # 生成输出文件名
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             base_name = os.path.splitext(self.excel_file)[0]
