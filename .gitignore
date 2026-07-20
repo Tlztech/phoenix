@@ -12,3 +12,6 @@ sizeToimage/Old
 tianmao_dewu/*/__pycache__
 tianmao_dewu/*.log
 
+__pycache__/
+*.pyc
+
