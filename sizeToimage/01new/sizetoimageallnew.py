@@ -155,19 +155,60 @@ def build_list_html(description):
     """
 
 
-def render_table_to_image(description, code, out_path):
-    """渲染表格并按所有<table>的并集包围盒裁剪"""
+class NoSizeTableError(Exception):
+    """Description里没有可渲染的尺码表——数据问题，重试没有意义"""
+
+
+# 整批复用一个浏览器实例。原来每张图都新建一次driver(还要调一次
+# ChromeDriverManager().install())，启动开销占了单张耗时的绝大部分。
+_driver = None
+
+
+def get_driver(mode):
+    """取得浏览器实例，没有就新建"""
+    global _driver
+    if _driver is not None:
+        return _driver
+
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--window-size=1920,1080')
+    if mode == MODE_TABLE:
+        options.add_argument('--disable-gpu')
+        options.add_argument('--window-size=1920,1080')
+    else:
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
 
-    driver = None
+    _driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()), options=options)
+    return _driver
+
+
+def drop_driver():
+    """丢弃当前实例，下次renders会重新拉起。浏览器崩溃后重试前调用"""
+    global _driver
+    if _driver is not None:
+        try:
+            _driver.quit()
+        except Exception:
+            pass
+        _driver = None
+
+
+def render_table_to_image(description, code, out_path):
+    """渲染表格并按所有<table>的并集包围盒裁剪
+
+    成功返回None；Description里没有table时抛NoSizeTableError；
+    其余异常(浏览器崩溃、超时等)原样抛出，交给上层重试。
+    """
     temp_html = f"temp_{code}.html"
 
     try:
-        driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()), options=options)
+        driver = get_driver(MODE_TABLE)
+
+        # driver是整批复用的，上一张图resize后的窗口尺寸会留到现在，
+        # 布局跟着变，出图就不一致了。每张渲染前先恢复初始窗口。
+        driver.set_window_size(1920, 1080)
 
         with open(temp_html, "w", encoding="utf-8") as f:
             f.write(build_table_html(description))
@@ -175,80 +216,60 @@ def render_table_to_image(description, code, out_path):
         driver.get(f"file://{os.path.abspath(temp_html)}")
         time.sleep(1)
 
-        try:
-            # 内容可能高于/宽于默认窗口(1920x1080)，截图只会截到视口大小，
-            # 导致下方表格被截掉。先把窗口撑到内容实际尺寸再截图。
-            content_width = driver.execute_script(
-                "return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);")
-            content_height = driver.execute_script(
-                "return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);")
-            driver.set_window_size(max(content_width + 100, 800), content_height + 100)
-            time.sleep(0.5)
+        # 内容可能高于/宽于默认窗口(1920x1080)，截图只会截到视口大小，
+        # 导致下方表格被截掉。先把窗口撑到内容实际尺寸再截图。
+        content_width = driver.execute_script(
+            "return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);")
+        content_height = driver.execute_script(
+            "return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);")
+        driver.set_window_size(max(content_width + 100, 800), content_height + 100)
+        time.sleep(0.5)
 
-            # 窗口尺寸变了，位置需要重新读取
-            tables = driver.find_elements(By.TAG_NAME, "table")
-            if not tables:
-                raise Exception("页面中未找到table元素")
+        # 窗口尺寸变了，位置需要重新读取
+        tables = driver.find_elements(By.TAG_NAME, "table")
+        if not tables:
+            raise NoSizeTableError("Description中没有table元素")
 
-            # 计算所有<table>的并集包围盒（表格是块级元素，纵向堆叠，
-            # 需要取所有表格的最小left/top和最大right/bottom）
-            left = top = right = bottom = None
-            for table in tables:
-                location, size = table.location, table.size
-                t_left = location['x']
-                t_top = location['y']
-                t_right = location['x'] + size['width']
-                t_bottom = location['y'] + size['height']
+        # 计算所有<table>的并集包围盒（表格是块级元素，纵向堆叠，
+        # 需要取所有表格的最小left/top和最大right/bottom）
+        left = top = right = bottom = None
+        for table in tables:
+            location, size = table.location, table.size
+            t_left = location['x']
+            t_top = location['y']
+            t_right = location['x'] + size['width']
+            t_bottom = location['y'] + size['height']
 
-                if left is None:
-                    left, top, right, bottom = t_left, t_top, t_right, t_bottom
-                else:
-                    left = min(left, t_left)
-                    top = min(top, t_top)
-                    right = max(right, t_right)
-                    bottom = max(bottom, t_bottom)
+            if left is None:
+                left, top, right, bottom = t_left, t_top, t_right, t_bottom
+            else:
+                left = min(left, t_left)
+                top = min(top, t_top)
+                right = max(right, t_right)
+                bottom = max(bottom, t_bottom)
 
-            im = Image.open(BytesIO(driver.get_screenshot_as_png()))
+        im = Image.open(BytesIO(driver.get_screenshot_as_png()))
 
-            margin = 5
-            im = im.crop((
-                max(0, left - margin),
-                max(0, top - margin),
-                min(im.width, right + margin),
-                min(im.height, bottom + margin)
-            ))
-            im.save(out_path, "JPEG")
-
-            return 0
-
-        except Exception:
-            print("description中没有尺码信息存在")
-            return 1
-
-    except Exception:
-        print(f"render_table_to_image函数出错: {code}")
-        return 1
+        margin = 5
+        im = im.crop((
+            max(0, left - margin),
+            max(0, top - margin),
+            min(im.width, right + margin),
+            min(im.height, bottom + margin)
+        ))
+        im.save(out_path, "JPEG")
 
     finally:
-        if driver:
-            driver.quit()
         if os.path.exists(temp_html):
             os.remove(temp_html)
 
 
 def render_list_to_image(description, code, out_path):
     """渲染纯文本尺码信息，整页截图（不裁剪）"""
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-
-    driver = None
     temp_html = f"temp_{code}.html"
 
     try:
-        driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()), options=options)
+        driver = get_driver(MODE_LIST)
 
         with open(temp_html, 'w', encoding='utf-8') as f:
             f.write(build_list_html(description))
@@ -257,24 +278,46 @@ def render_list_to_image(description, code, out_path):
         time.sleep(2)
 
         driver.save_screenshot(out_path)
-        return 0
-
-    except Exception:
-        print(f"render_list_to_image函数出错: {code}")
-        return 1
 
     finally:
-        if driver:
-            driver.quit()
         if os.path.exists(temp_html):
             os.remove(temp_html)
 
 
 def render_description(description, code, out_path, mode):
-    """按渲染模式出图，返回0成功/1失败"""
+    """按渲染模式出图，失败时抛异常"""
     if mode == MODE_TABLE:
-        return render_table_to_image(description, code, out_path)
-    return render_list_to_image(description, code, out_path)
+        render_table_to_image(description, code, out_path)
+    else:
+        render_list_to_image(description, code, out_path)
+
+
+def render_with_retry(description, code, out_path, mode, attempts=3):
+    """出图，偶发失败时重试。返回True成功/False失败
+
+    只重试"可能是偶发"的失败(浏览器崩溃、超时、截图失败)。
+    Description里压根没有尺码表属于数据问题，重试多少次都一样，
+    直接判定失败——全量跑几千个商品时这个区分能省掉大量无效等待。
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            render_description(description, code, out_path, mode)
+            return True
+
+        except NoSizeTableError as e:
+            print(f"该Code的尺码信息有误，请确认: {code} ({e})")
+            return False
+
+        except Exception as e:
+            if attempt < attempts:
+                print(f"出图失败，第{attempt}次重试: {code} ({type(e).__name__}: {e})")
+                # 浏览器可能已经崩了，丢掉实例让下次重新拉起
+                drop_driver()
+                time.sleep(2 * attempt)
+            else:
+                print(f"出图失败({attempts}次均失败): {code} ({type(e).__name__}: {e})")
+
+    return False
 
 
 # ---------------------------------------------------------------- 七牛
@@ -336,6 +379,18 @@ def upload_to_qiniu(local_file_path, qiniu_path):
             content_hash = hashlib.md5(f.read()).hexdigest()
 
     return build_image_url(qiniu_path, content_hash)
+
+
+def upload_with_retry(local_file_path, qiniu_path, attempts=3):
+    """上传，失败时重试。上传失败基本都是网络问题，值得重试"""
+    for attempt in range(1, attempts + 1):
+        try:
+            return upload_to_qiniu(local_file_path, qiniu_path)
+        except Exception as e:
+            if attempt >= attempts:
+                raise
+            print(f"上传失败，第{attempt}次重试: {qiniu_path} ({type(e).__name__}: {e})")
+            time.sleep(2 * attempt)
 
 
 def refresh_cdn(brand_name, uploaded_urls):
@@ -418,7 +473,7 @@ def process_excel(excel_file, brand_name, color_size_flag, skip_existing):
 
         existing_urls = list_existing_images(brand_name) if skip_existing else {}
 
-        stats = {'existing_used': 0, 'new_created': 0, 'errors': 0}
+        stats = {'existing_used': 0, 'new_created': 0, 'failed': 0, 'errors': 0}
         previous_code = ''
         current_url = ''
         uploaded_urls = []  # 本次上传的所有URL，跑完统一刷新CDN
@@ -449,18 +504,16 @@ def process_excel(excel_file, brand_name, color_size_flag, skip_existing):
                         qiniu_path = f"sizetoimg/{brand_name}/{current_code}.jpg"
                         temp_img_path = qiniu_path
 
-                        process_result = render_description(
-                            str(description), current_code, temp_img_path, mode)
-
-                        if process_result == 0:
-                            current_url = upload_to_qiniu(temp_img_path, qiniu_path)
+                        if render_with_retry(str(description), current_code,
+                                             temp_img_path, mode):
+                            current_url = upload_with_retry(temp_img_path, qiniu_path)
                             uploaded_urls.append(current_url)
                             os.remove(temp_img_path)
 
                             stats['new_created'] += 1
                             print(f"已处理: {current_code} ({stats['new_created']})")
                         else:
-                            print(f"该Code的尺码信息有误，请确认: {current_code}")
+                            stats['failed'] += 1
 
                     previous_code = current_code
 
@@ -470,6 +523,9 @@ def process_excel(excel_file, brand_name, color_size_flag, skip_existing):
                 stats['errors'] += 1
                 print(f"处理第 {index + 1} 行时出错: {e}")
                 continue
+
+        # 出图都做完了，浏览器可以关了
+        drop_driver()
 
         # 全部上传完成后，统一刷新一次CDN
         refresh_cdn(brand_name, uploaded_urls)
@@ -483,6 +539,7 @@ def process_excel(excel_file, brand_name, color_size_flag, skip_existing):
         print(f"总行数处理: {len(df)}")
         print(f"使用现有图片: {stats['existing_used']}")
         print(f"创建新图片: {stats['new_created']}")
+        print(f"出图失败: {stats['failed']}")
         print(f"错误行数: {stats['errors']}")
         print(f"结果文件: {output_path}")
         print(f"总耗时: {elapsed:.2f} 秒")
@@ -502,6 +559,10 @@ def process_excel(excel_file, brand_name, color_size_flag, skip_existing):
 
         print(f"错误详情已写入 {error_file_path}")
         raise
+
+    finally:
+        # 出错时也要关掉，否则会残留Chrome进程
+        drop_driver()
 
 
 if __name__ == "__main__":
