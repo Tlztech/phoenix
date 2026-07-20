@@ -36,20 +36,33 @@ SECRET_KEY = 'hBo8wjRGkngB_xn2txneCYkD5FheUeok4MG_Frd3'
 BUCKET_NAME = 'pximages'
 BASE_URL = 'https://qncdn.sytlz.com'
 
-# 渲染模式。多数品牌的Description里是<table>，直接渲染表格；
-# 下面这些品牌是纯文本尺码信息，按<br>切分后渲染成列表。
+# 渲染模式，按品牌区分Description的内容形态：
+#   table 里面是<table>，渲染后按表格包围盒裁剪(多数品牌)
+#   list  纯文本尺码信息，按<br>切分后逐条包<li>
+#   raw   本身已经是完整的列表HTML(<ul><li>...)，原样输出即可
 MODE_TABLE = 'table'
 MODE_LIST = 'list'
+MODE_RAW = 'raw'
 
 LIST_BRANDS = {
     'YONEX', 'SWANS', 'GREGORY', 'HELLYHANSEN', 'THENORTHFACE',
     'DESCENTE', 'ASICS', 'MIZUNO', 'OAKLEY', 'UNDERARMOUR',
 }
 
+# LACOSTE的Description是现成的<ul><li><span>..</span><p>..</p></li></ul>，
+# 既没有<table>也没有<br>：走表格模式会全军覆没，走list模式会被
+# 再包一层<li>导致嵌套变形，只能原样输出。
+RAW_BRANDS = {'LACOSTE'}
+
 
 def get_render_mode(brand_name):
     """按品牌决定用哪种渲染模式"""
-    return MODE_LIST if brand_name.upper() in LIST_BRANDS else MODE_TABLE
+    brand = brand_name.upper()
+    if brand in LIST_BRANDS:
+        return MODE_LIST
+    if brand in RAW_BRANDS:
+        return MODE_RAW
+    return MODE_TABLE
 
 
 # ---------------------------------------------------------------- 参数
@@ -128,8 +141,12 @@ def build_table_html(description):
     """
 
 
-def build_list_html(description):
-    """纯文本尺码信息按<br>切分渲染成列表"""
+def build_list_html(description, mode):
+    """渲染尺码列表
+
+    MODE_LIST 按<br>切分，逐条包<li>；
+    MODE_RAW  Description本身就是完整的列表HTML，原样放进body。
+    """
     html = """
     <!DOCTYPE html>
     <html>
@@ -141,15 +158,18 @@ def build_list_html(description):
         </style>
     </head>
     <body>
-    <ul>
     """
 
-    if pd.notna(description):
-        for item in str(description).split('<br>'):
-            html += '<li>' + item.strip() + '</li>'
+    if mode == MODE_RAW:
+        html += str(description) if pd.notna(description) else ''
+    else:
+        html += '<ul>'
+        if pd.notna(description):
+            for item in str(description).split('<br>'):
+                html += '<li>' + item.strip() + '</li>'
+        html += '</ul>'
 
     return html + """
-    </ul>
     </body>
     </html>
     """
@@ -264,15 +284,15 @@ def render_table_to_image(description, code, out_path):
             os.remove(temp_html)
 
 
-def render_list_to_image(description, code, out_path):
-    """渲染纯文本尺码信息，整页截图（不裁剪）"""
+def render_list_to_image(description, code, out_path, mode):
+    """渲染尺码列表，整页截图（不裁剪）"""
     temp_html = f"temp_{code}.html"
 
     try:
-        driver = get_driver(MODE_LIST)
+        driver = get_driver(mode)
 
         with open(temp_html, 'w', encoding='utf-8') as f:
-            f.write(build_list_html(description))
+            f.write(build_list_html(description, mode))
 
         driver.get(f"file://{os.path.abspath(temp_html)}")
         time.sleep(2)
@@ -289,7 +309,7 @@ def render_description(description, code, out_path, mode):
     if mode == MODE_TABLE:
         render_table_to_image(description, code, out_path)
     else:
-        render_list_to_image(description, code, out_path)
+        render_list_to_image(description, code, out_path, mode)
 
 
 def render_with_retry(description, code, out_path, mode, attempts=3):
