@@ -438,6 +438,11 @@ def process_excel(excel_file, brand_name, color_size_flag, skip_existing):
                     continue
 
                 if current_code != previous_code:
+                    # 换货号了先清空。不清的话这个货号出图失败时，
+                    # 该行会被写上"上一个货号"的图片URL——尺码表张冠李戴。
+                    # 失败就留空，宁可缺图也不能挂错图。
+                    current_url = ''
+
                     description = row['Description']
                     if pd.notna(description) and str(description).strip():
                         os.makedirs(f"sizetoimg/{brand_name}", exist_ok=True)
