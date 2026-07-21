@@ -26,7 +26,12 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from qiniu import Auth, put_file_v2, BucketManager, CdnManager
+from qiniu import Auth, BucketManager, CdnManager
+try:
+    # 七牛SDK 7.11+ 才有 put_file_v2，旧版本退回 put_file
+    from qiniu import put_file_v2 as qiniu_put_file
+except ImportError:
+    from qiniu import put_file as qiniu_put_file
 
 
 # ---------------------------------------------------------------- 配置
@@ -386,7 +391,7 @@ def list_existing_images(brand_name):
 def upload_to_qiniu(local_file_path, qiniu_path):
     q = Auth(ACCESS_KEY, SECRET_KEY)
     token = q.upload_token(BUCKET_NAME, qiniu_path, 3600)
-    ret, info = put_file_v2(token, qiniu_path, local_file_path)
+    ret, info = qiniu_put_file(token, qiniu_path, local_file_path)
 
     if info.status_code != 200:
         raise Exception(f"七牛云上传失败: {info}")
