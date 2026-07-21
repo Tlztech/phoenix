@@ -1,0 +1,4 @@
+# 需要爬取的类别页 URL，每行一个（# 开头的行会被忽略）
+https://www.patagonia.jp/shop/womens
+https://www.patagonia.jp/shop/mens
+https://www.patagonia.jp/shop/kids-baby/big-kids

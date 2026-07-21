@@ -14,6 +14,32 @@
 - Windows 定时任务入口：`lululemon_scrapling/run_scraper.ps1`
 - 项目说明：`lululemon_scrapling/README.md`
 
+### `patagonia_scrapling/`
+
+按 **SKU** 抓取 patagonia.jp 的**价格**和**各门店库存状况**（ストアの在庫状況），输出 Excel。
+输入是一份已知的 SKU 清单，用于查价 / 查门店有没有货。
+
+- 主程序：`patagonia_scrapling/main.py`
+- 输入：`patagonia_scrapling/items.xlsx`（`sku` 列）
+- 依赖：`patagonia_scrapling/requirements.txt`
+- 项目说明：`patagonia_scrapling/README.md`
+
+### `patagonia_scrapling2/`
+
+按**类别页**全量抓取 patagonia.jp 的商品，展开颜色 / 尺码变体，输出 19 列商品主数据。
+和上面那个不是一回事：这个是「把整个类别的商品都爬下来」，不需要预先给 SKU。
+
+- 主程序：`patagonia_scrapling2/main.py`（源码在 `src/patagonia_scraper/`）
+- 输入：`patagonia_scrapling2/input_url.txt`（类别页 URL，每行一个）
+- 依赖：`patagonia_scrapling2/requirements.txt`
+- Windows 定时任务 + 自动续跑：`patagonia_scrapling2/windows-deploy/`、`部署说明.md`
+- 项目说明：`patagonia_scrapling2/README.md`
+- 开发/排查记录：`patagonia_scrapling2/会话记录.md`
+
+> 两个 patagonia 项目的反爬手段不同：`patagonia_scrapling` 用 Scrapling 隐身浏览器，
+> `patagonia_scrapling2` 面对的是 Akamai Bot Manager，必须用命令行启动的真实 Chrome + CDP 挂载。
+> 两者都需要**有头模式**运行，执行期间会弹出浏览器窗口，请勿关闭。
+
 ### `sizeToimage/`
 
 与尺码表图片处理相关的脚本目录，包含新图与旧图两套流程。

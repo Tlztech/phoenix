@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.scrapling_cache/
+.cache/
+.chrome-profile/
+output/
+patagonia_output_*.xlsx
+
+monitor.log
+monitor_last_start.txt
+output_test/
+monitor_test.log
+monitor_test_last_start.txt
+temp/

@@ -1,8 +1,20 @@
 *.txt
 *.xlsx
 *.rar
+*.zip
 *.jpg
 !lululemon_scrapling/*.txt
+
+# patagonia：运行必需的输入/依赖清单，需要跟踪
+!patagonia_scrapling/requirements.txt
+!patagonia_scrapling/items.xlsx
+!patagonia_scrapling2/requirements.txt
+!patagonia_scrapling2/input_url.txt
+!patagonia_scrapling2/Patagonia-V8.2.xlsx
+!patagonia_scrapling2/Patagonia-女装url.xlsx
+
+# 会话聊天原文（逐字导出，非文档），开发记录见 会话记录.md
+patagonia_scrapling2/会话原文.md
 
 
 sizeToimage/01new/sizetoimg
@@ -14,4 +26,6 @@ tianmao_dewu/*.log
 
 __pycache__/
 *.pyc
+
+.claude/settings.local.json
 

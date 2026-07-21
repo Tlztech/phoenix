@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+.patagonia_cache/
+patagonia_output_*.xlsx
+_probe_*.html
