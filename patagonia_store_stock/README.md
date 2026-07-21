@@ -1,10 +1,10 @@
-# patagonia_scrapling
+# patagonia_store_stock
 
 按 SKU 抓取 patagonia.jp（巴塔哥尼亚日本官方在线商店）的**价格**和
 **门店库存状况（ストアの在庫状況 / 各门店库存）**，并输出到 Excel。
 
-> **别和 `../patagonia_scrapling2/` 搞混**：本项目输入的是**已知的 SKU 清单**，
-> 查的是价格和门店库存；`patagonia_scrapling2` 是按**类别页全量抓取**商品主数据
+> **别和 `../patagonia_catalog/` 搞混**：本项目输入的是**已知的 SKU 清单**，
+> 查的是价格和门店库存；`patagonia_catalog` 是按**类别页全量抓取**商品主数据
 > （19 列，含图片、材质、尺寸表等），不需要预先给 SKU。两者用途不同，代码也独立。
 
 ## 处理流程

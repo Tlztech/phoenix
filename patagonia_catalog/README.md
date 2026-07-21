@@ -4,7 +4,7 @@
 解析每个商品的 JSON-LD / HTML，展开颜色和尺码变体，输出与参考文件
 `Patagonia-V8.2.xlsx` 相同的 19 列数据到 Excel。
 
-> **别和 `../patagonia_scrapling/` 搞混**：那个项目输入的是**已知 SKU 清单**，
+> **别和 `../patagonia_store_stock/` 搞混**：那个项目输入的是**已知 SKU 清单**，
 > 只查价格和门店库存；本项目是按**类别页全量抓取**商品主数据，不需要预先给 SKU。
 > 两者面对的反爬也不同（那边是 Scrapling 隐身浏览器，这边是 Akamai + 真实 Chrome）。
 
@@ -40,7 +40,7 @@
 ## 二、工程结构
 
 ```
-patagonia_scrapling2/
+patagonia_catalog/
 ├─ main.py                     入口脚本（python main.py 运行）
 ├─ input_url.txt               要爬取的类别页 URL（每行一个，可编辑）
 ├─ requirements.txt            依赖清单
