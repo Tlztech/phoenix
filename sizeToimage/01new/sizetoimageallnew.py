@@ -42,12 +42,14 @@ BUCKET_NAME = 'pximages'
 BASE_URL = 'https://qncdn.sytlz.com'
 
 # 渲染模式，按品牌区分Description的内容形态：
-#   table 里面是<table>，渲染后按表格包围盒裁剪(多数品牌)
-#   list  纯文本尺码信息，按<br>切分后逐条包<li>
-#   raw   本身已经是完整的列表HTML(<ul><li>...)，原样输出即可
+#   table  里面是<table>，渲染后按表格包围盒裁剪(多数品牌)
+#   list   纯文本尺码信息，按<br>切分后逐条包<li>
+#   raw    本身已经是完整的列表HTML(<ul><li>...)，原样输出即可
+#   styled Description自带<style>，样式和内容都以它为准，按内容整体裁剪
 MODE_TABLE = 'table'
 MODE_LIST = 'list'
 MODE_RAW = 'raw'
+MODE_STYLED = 'styled'
 
 LIST_BRANDS = {
     'YONEX', 'SWANS', 'GREGORY', 'HELLYHANSEN', 'THENORTHFACE',
@@ -59,14 +61,21 @@ LIST_BRANDS = {
 # 再包一层<li>导致嵌套变形，只能原样输出。
 RAW_BRANDS = {'LACOSTE'}
 
+# MONTBELL的Description是一整段带<style>的HTML：标题、表格、单位、脚注齐全，
+# 样式也自己写好了。走table模式有两处会坏：脚本自带的CSS会跟它的样式打架；
+# 按<table>裁剪会把表格外面的标题/单位/脚注全裁掉。所以原样渲染、整体裁剪。
+STYLED_BRANDS = {'MONTBELL'}
+
 
 def get_render_mode(brand_name):
-    """按品牌决定用哪种渲染模式"""
+    """按品牌决定用哪种渲染模式（品牌名不区分大小写）"""
     brand = brand_name.upper()
     if brand in LIST_BRANDS:
         return MODE_LIST
     if brand in RAW_BRANDS:
         return MODE_RAW
+    if brand in STYLED_BRANDS:
+        return MODE_STYLED
     return MODE_TABLE
 
 
@@ -180,6 +189,32 @@ def build_list_html(description, mode):
     """
 
 
+def build_styled_html(description):
+    """Description自带样式，这里只提供一块画布
+
+    刻意不写任何表格/列表的CSS：出图长什么样完全由Description里的<style>决定，
+    脚本插一手就会跟它冲突。body的padding是给圆角和阴影留的余量，裁剪时会去掉。
+    """
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {{
+            margin: 0;
+            padding: 20px;
+            background: #ffffff;
+            font-family: Arial, "Microsoft YaHei", "Meiryo", sans-serif;
+        }}
+    </style>
+</head>
+<body>
+{description if pd.notna(description) else ''}
+</body>
+</html>
+"""
+
+
 class NoSizeTableError(Exception):
     """Description里没有可渲染的尺码表——数据问题，重试没有意义"""
 
@@ -197,7 +232,7 @@ def get_driver(mode):
 
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')
-    if mode == MODE_TABLE:
+    if mode in (MODE_TABLE, MODE_STYLED):
         options.add_argument('--disable-gpu')
         options.add_argument('--window-size=1920,1080')
     else:
@@ -289,6 +324,73 @@ def render_table_to_image(description, code, out_path):
             os.remove(temp_html)
 
 
+# 取内容包围盒：只算"真正画了东西"的元素——直接带文字的元素，以及
+# 表格和图片。不能拿最外层的div算，它是块级元素、宽度铺满整个窗口，
+# 裁出来两边全是空白；也不能只拿<table>算，标题和脚注在表格外面。
+CONTENT_BOX_JS = """
+const boxes = [];
+document.querySelectorAll('body *').forEach(el => {
+    const hasText = Array.from(el.childNodes).some(
+        n => n.nodeType === Node.TEXT_NODE && n.textContent.trim() !== '');
+    if (!hasText && el.tagName !== 'TABLE' && el.tagName !== 'IMG') return;
+    const r = el.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return;
+    boxes.push([r.left + window.scrollX, r.top + window.scrollY,
+                r.right + window.scrollX, r.bottom + window.scrollY]);
+});
+if (!boxes.length) return null;
+return [Math.min(...boxes.map(b => b[0])), Math.min(...boxes.map(b => b[1])),
+        Math.max(...boxes.map(b => b[2])), Math.max(...boxes.map(b => b[3]))];
+"""
+
+
+def render_styled_to_image(description, code, out_path):
+    """Description自带样式，原样渲染后按内容整体裁剪
+
+    和table模式的区别：不套脚本的CSS，裁剪范围也不限于<table>，
+    标题、单位、脚注这些表格外面的内容一并保留。
+    """
+    temp_html = f"temp_{code}.html"
+
+    try:
+        driver = get_driver(MODE_STYLED)
+
+        # driver整批复用，先恢复初始窗口，否则上一张图resize后的尺寸会影响布局
+        driver.set_window_size(1920, 1080)
+
+        with open(temp_html, "w", encoding="utf-8") as f:
+            f.write(build_styled_html(description))
+
+        driver.get(f"file://{os.path.abspath(temp_html)}")
+        time.sleep(1)
+
+        # 内容可能高于视口，截图只截视口大小，先把窗口撑到内容实际尺寸
+        content_height = driver.execute_script(
+            "return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);")
+        driver.set_window_size(1920, content_height + 100)
+        time.sleep(0.5)
+
+        box = driver.execute_script(CONTENT_BOX_JS)
+        if not box:
+            raise NoSizeTableError("Description渲染后没有可见内容")
+
+        left, top, right, bottom = box
+        im = Image.open(BytesIO(driver.get_screenshot_as_png()))
+
+        margin = 12
+        im = im.crop((
+            max(0, int(left) - margin),
+            max(0, int(top) - margin),
+            min(im.width, int(right) + margin + 1),
+            min(im.height, int(bottom) + margin + 1)
+        ))
+        im.convert("RGB").save(out_path, "JPEG", quality=92)
+
+    finally:
+        if os.path.exists(temp_html):
+            os.remove(temp_html)
+
+
 def render_list_to_image(description, code, out_path, mode):
     """渲染尺码列表，整页截图（不裁剪）"""
     temp_html = f"temp_{code}.html"
@@ -313,6 +415,8 @@ def render_description(description, code, out_path, mode):
     """按渲染模式出图，失败时抛异常"""
     if mode == MODE_TABLE:
         render_table_to_image(description, code, out_path)
+    elif mode == MODE_STYLED:
+        render_styled_to_image(description, code, out_path)
     else:
         render_list_to_image(description, code, out_path, mode)
 
