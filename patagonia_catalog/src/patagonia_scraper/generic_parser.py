@@ -6,7 +6,13 @@ from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 from .models import ColorVariant, ProductPageData
-from .parser import clean_image_url, extract_image_urls, model_from_url, normalize_space
+from .parser import (
+    clean_image_url,
+    extract_image_urls,
+    model_from_url,
+    normalize_space,
+    variant_color_code,
+)
 
 
 def _json_objects(page: Any) -> list[dict[str, Any]]:
@@ -43,6 +49,10 @@ def parse_generic_product_page(page: Any, url: str) -> ProductPageData:
     objects = _json_objects(page)
     group = next((obj for obj in objects if obj.get("@type") in {"ProductGroup", "Product"}), {})
     products = [obj for obj in objects if obj.get("@type") == "Product"]
+    # A page may also carry a rating-only ``Product`` blob with no sku/mpn/colour;
+    # it is not a variant and would otherwise land in the output as "default".
+    identified = [obj for obj in products if obj.get("sku") or obj.get("mpn") or obj.get("color")]
+    products = identified or products
     raw_model = str(group.get("productGroupID") or group.get("mpn") or model_from_url(url))
     model_match = re.search(r"\d{4,7}", raw_model)
     model = model_match.group(0) if model_match else raw_model
@@ -66,15 +76,23 @@ def parse_generic_product_page(page: Any, url: str) -> ProductPageData:
     weight_match = re.search(r"(?:重量|weight)\s*[:：]?\s*([0-9.,]+\s*(?:g|kg|グラム))", body_text, re.I)
     weight = weight_match.group(1) if weight_match else ""
     by_color: dict[str, ColorVariant] = {}
+    group_colors = group.get("color")
+    allowed = (
+        {normalize_space(str(value)) for value in group_colors if normalize_space(str(value))}
+        if isinstance(group_colors, list)
+        else set()
+    )
     for item in products or [group]:
         sku = str(item.get("sku") or item.get("mpn") or "")
         parts = sku.split("-")
-        color = str(item.get("color") or (parts[1] if len(parts) > 2 else ""))
+        # The short code (``OLLN``), not the display name the ``color`` field holds.
+        color = variant_color_code(item, model, allowed)
         size = str(item.get("size") or (parts[2] if len(parts) > 2 else ""))
         if not color:
             color = parse_qs(urlsplit(url).query).get(f"dwvar_{model}_color", [""])[0]
         color = color or "default"
-        variant = by_color.setdefault(color, ColorVariant(code=color, name=color, sizes=[]))
+        name = normalize_space(item.get("color")) or color
+        variant = by_color.setdefault(color, ColorVariant(code=color, name=name, sizes=[]))
         if size and size not in variant.sizes:
             variant.sizes.append(size)
         if sku and size:

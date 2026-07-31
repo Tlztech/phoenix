@@ -145,6 +145,78 @@ def images_for_color(urls: Iterable[str], model: str, color: str, main_image: st
     return result
 
 
+def color_code_from_url(url: str, model: str = "") -> str:
+    """The colour a URL selects: ``dwvar_{model}_color`` on product URLs,
+    ``selectedColor`` on the alt-assets endpoint."""
+    if not url:
+        return ""
+    query = parse_qsl(urlsplit(unescape(str(url))).query, keep_blank_values=True)
+    preferred = f"dwvar_{model}_color" if model else ""
+    fallback = ""
+    for key, value in query:
+        if not value:
+            continue
+        if key == preferred or key == "selectedColor":
+            return normalize_space(value)
+        if not fallback and key.startswith("dwvar_") and key.endswith("_color"):
+            fallback = normalize_space(value)
+    return fallback
+
+
+def variant_color_code(item: dict[str, Any], model: str, allowed: set[str] | None = None) -> str:
+    """The colour code (``OLLN``) of one JSON-LD ``Product`` variant.
+
+    The customer's catalogue keys colours on Patagonia's short code, but the
+    variant's ``color`` field holds the display name (``'95 Oval Logo: Lichen
+    Green``). The code is still there without clicking a swatch: ``mpn``/``sku``
+    are ``{model}-{code}[-{size}]`` and the offer URL carries
+    ``dwvar_{model}_color={code}``. ``allowed`` is the ``ProductGroup``'s own
+    list of codes, used to pick between those sources; the display name is only
+    a last resort.
+    """
+    candidates: list[str] = []
+    prefix = f"{model}-" if model else ""
+    for raw in (item.get("mpn"), item.get("sku")):
+        value = normalize_space(str(raw or ""))
+        if prefix and value.startswith(prefix):
+            candidates.append(value[len(prefix) :].split("-", 1)[0])
+    offer = item.get("offers") or {}
+    if isinstance(offer, list):
+        offer = offer[0] if offer else {}
+    if isinstance(offer, dict):
+        candidates.append(color_code_from_url(offer.get("url") or "", model))
+    candidates = [candidate for candidate in candidates if candidate]
+    if allowed:
+        for candidate in candidates:
+            if candidate in allowed:
+                return candidate
+    if candidates:
+        return candidates[0]
+    return normalize_space(item.get("color"))
+
+
+def swatch_color_code(swatch: Any, model: str = "", allowed: set[str] | None = None) -> str:
+    """The colour code of one swatch button, read without clicking it.
+
+    ``data-color``/``data-attr``/``data-attr-value`` all carry the code, and the
+    alt-assets URL repeats it as ``selectedColor``; ``data-caption`` holds the
+    display name and is never used. ``allowed`` (the codes the JSON-LD lists)
+    settles it should an attribute ever hold a name instead.
+    """
+    attrs = swatch.attrib
+    candidates = [
+        normalize_space(str(attrs.get(key) or ""))
+        for key in ("data-color", "data-attr", "data-attr-value")
+    ]
+    candidates.append(color_code_from_url(attrs.get("data-reload-altassets") or "", model))
+    candidates = [candidate for candidate in candidates if candidate]
+    if allowed:
+        for candidate in candidates:
+            if candidate in allowed:
+                return candidate
+    return candidates[0] if candidates else ""
+
+
 def parse_product_schema(page: Any) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     raw = page.css("script#product-schema::text").get()
     if not raw:
@@ -159,15 +231,18 @@ def parse_product_schema(page: Any) -> tuple[dict[str, Any], dict[str, dict[str,
         raise ValueError("ProductGroup JSON-LD not found")
     variants: dict[str, dict[str, Any]] = {}
     model = str(group.get("productGroupID") or str(group.get("@id", "")).lstrip("#"))
+    # The group lists every colour code of the product, e.g. ["OLLN", "TEBI", ...].
+    group_colors = group.get("color")
+    allowed = (
+        {normalize_space(str(value)) for value in group_colors if normalize_space(str(value))}
+        if isinstance(group_colors, list)
+        else set()
+    )
     for item in objects:
         if item.get("@type") != "Product":
             continue
-        mpn = str(item.get("mpn") or item.get("sku") or "")
-        prefix = f"{model}-"
-        code = normalize_space(item.get("color"))
-        if not code:
-            suffix = mpn[len(prefix) :] if mpn.startswith(prefix) else mpn.rsplit("-", 1)[-1]
-            code = suffix.split("-", 1)[0]
+        # Keyed by colour *code*, so a swatch's ``data-color`` finds its variant.
+        code = variant_color_code(item, model, allowed)
         if code:
             variants[code] = item
     return group, variants
@@ -231,6 +306,7 @@ def clean_dimension_table(page: Any) -> str:
 
 def parse_product_page(page: Any, page_url: str) -> ProductPageData:
     group, schema_variants = parse_product_schema(page)
+    schema_codes = set(schema_variants)
     model = str(group.get("productGroupID") or str(group.get("@id", "")).lstrip("#"))
     title = normalize_space(group.get("name"))
     description = normalize_space(group.get("description"))
@@ -259,8 +335,8 @@ def parse_product_page(page: Any, page_url: str) -> ProductPageData:
     fallback_sizes = page.css('input[name="size"]::attr(value)').getall()
     colors: list[ColorVariant] = []
     seen_colors: set[str] = set()
-    for swatch in page.css("button.product-swatch[data-color]"):
-        code = str(swatch.attrib.get("data-color") or swatch.attrib.get("data-attr-value") or "")
+    for swatch in page.css("button.product-swatch[data-color], button.product-swatch[data-attr-value]"):
+        code = swatch_color_code(swatch, model, schema_codes)
         if not code or code in seen_colors:
             continue
         seen_colors.add(code)
