@@ -104,3 +104,8 @@ class ProductPageData:
     weight: str
     colors: list[ColorVariant]
     variation_endpoint: str = ""  # SFCC Product-Variation URL base for per-size stock
+    # Tax-included prices exactly as rendered in the buy box (what the customer
+    # sees). ``display_list_price`` is the struck-through original, present only
+    # while the product is discounted.
+    display_price: int | None = None
+    display_list_price: int | None = None

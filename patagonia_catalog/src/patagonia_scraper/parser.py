@@ -404,6 +404,7 @@ def parse_product_page(page: Any, page_url: str) -> ProductPageData:
     if data_url:
         variation_endpoint = unescape(data_url).split("?", 1)[0]
 
+    display_price, display_list_price = displayed_prices(page)
     return ProductPageData(
         title=title,
         model=model,
@@ -414,7 +415,29 @@ def parse_product_page(page: Any, page_url: str) -> ProductPageData:
         weight=weight,
         colors=colors,
         variation_endpoint=variation_endpoint,
+        display_price=display_price,
+        display_list_price=display_list_price,
     )
+
+
+def displayed_prices(page: Any) -> tuple[int | None, int | None]:
+    """The tax-included prices the buy box actually shows: ``(sales, list)``.
+
+    SFCC renders ``.buy-config-price .price .sales .value`` with the current
+    price in its ``content`` attribute, plus a struck-through
+    ``.strike-through.list .value`` original while a markdown is active. The
+    ``.buy-config-price`` scope keeps recommendation tiles and the sticky
+    header out of the match.
+    """
+
+    def _content(selector: str) -> int | None:
+        raw = page.css(f".buy-config-price .price {selector} .value::attr(content)").get()
+        try:
+            return int(float(raw))
+        except (TypeError, ValueError):
+            return None
+
+    return _content(".sales"), _content(".strike-through.list")
 
 
 def format_yen(value: Any) -> str:

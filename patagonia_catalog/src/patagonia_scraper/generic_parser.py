@@ -8,6 +8,7 @@ from urllib.parse import parse_qs, urlsplit
 from .models import ColorVariant, ProductPageData
 from .parser import (
     clean_image_url,
+    displayed_prices,
     extract_image_urls,
     model_from_url,
     normalize_space,
@@ -123,4 +124,16 @@ def parse_generic_product_page(page: Any, url: str) -> ProductPageData:
             variant.sizes = [""]
         if not variant.main_image:
             variant.main_image = extract_image_urls(page)[0] if extract_image_urls(page) else ""
-    return ProductPageData(title, model, str(brand).lower(), description, dimension, material, weight, list(by_color.values()))
+    display_price, display_list_price = displayed_prices(page)
+    return ProductPageData(
+        title,
+        model,
+        str(brand).lower(),
+        description,
+        dimension,
+        material,
+        weight,
+        list(by_color.values()),
+        display_price=display_price,
+        display_list_price=display_list_price,
+    )

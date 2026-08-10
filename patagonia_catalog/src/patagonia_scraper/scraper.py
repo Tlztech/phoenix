@@ -15,7 +15,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from openpyxl import load_workbook
 
 from .checkpoint import Checkpoint
-from .constants import DEFAULT_CATEGORY_URL
+from .constants import DEFAULT_CATEGORY_URL, JP_TAX_RATE
 from .excel import ExcelOutput
 from .fetcher import FetchConfig, PatagoniaFetcher
 from .models import ProductPageData, ProductRow, dedupe_rows
@@ -77,6 +77,18 @@ def _read_url_file(path: str | Path) -> list[str]:
             if "/product/" in value:
                 values.append(canonical_product_url(value))
     return list(dict.fromkeys(values))
+
+
+def _tax_included(value: object) -> object:
+    """Convert a JSON-LD (tax-exclusive) price to the 税込 amount the sheet stores.
+
+    Prices scraped from visible page text are already display strings like
+    ``"¥ 7,150"`` (tax included) and pass through unchanged.
+    """
+    try:
+        return int(round(float(value) * JP_TAX_RATE))
+    except (TypeError, ValueError):
+        return value
 
 
 def _variant_url(url: str, model: str, color: str, upc: str = "") -> str:
@@ -407,18 +419,32 @@ class PatagoniaScraper:
                             data_by_size[size] = info
 
             # msrp = original (list) price; discounted only when it differs.
+            # SFCC only sends ``list`` while a markdown is active; at full price the
+            # tax-included amount is in ``sales`` alone (and the JSON-LD fallback is
+            # tax-exclusive), so a sales-only response must still win over JSON-LD.
             color_list = color_sales = None
             for size in sizes:
                 info = data_by_size.get(size)
-                if info and info["list"] is not None:
-                    color_list, color_sales = info["list"], info["sales"]
+                if info and (info["list"] is not None or info["sales"] is not None):
+                    color_list = info["list"] if info["list"] is not None else info["sales"]
+                    color_sales = info["sales"]
                     break
             if color_list is not None:
                 msrp = format_yen(color_list)
                 discounted = format_yen(color_sales) if (color_sales is not None and color_sales != color_list) else ""
-            else:  # endpoint gave no price — fall back to the JSON-LD values
-                msrp = format_yen(color.msrp if color.msrp not in (None, "") else color.offer_price)
-                discounted = format_yen(color.discounted_price)
+            elif product.display_price is not None:
+                # Endpoint gave no price — use the price the buy box displays,
+                # which is exactly what the customer sees (tax included).
+                shown_list = product.display_list_price or product.display_price
+                msrp = format_yen(shown_list)
+                discounted = (
+                    format_yen(product.display_price)
+                    if product.display_list_price and product.display_price != product.display_list_price
+                    else ""
+                )
+            else:  # last resort: JSON-LD values (税抜 → 税込)
+                msrp = format_yen(_tax_included(color.msrp if color.msrp not in (None, "") else color.offer_price))
+                discounted = format_yen(_tax_included(color.discounted_price))
 
             for size in sizes:
                 # A one-size "ALL" variant is written with an empty size and a
