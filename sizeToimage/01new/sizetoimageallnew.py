@@ -51,6 +51,12 @@ MODE_LIST = 'list'
 MODE_RAW = 'raw'
 MODE_STYLED = 'styled'
 
+# 静态尺码图主要在手机端展示。400px 接近常见手机内容区宽度，
+# 既能避免桌面宽图在手机上被过度缩小，也给浏览器窗口留出少量外边距。
+MOBILE_CONTENT_WIDTH = 400
+MOBILE_VIEWPORT_WIDTH = MOBILE_CONTENT_WIDTH + 40
+MOBILE_INITIAL_HEIGHT = 1080
+
 LIST_BRANDS = {
     'YONEX', 'SWANS', 'GREGORY', 'HELLYHANSEN', 'THENORTHFACE',
     'DESCENTE', 'ASICS', 'MIZUNO', 'OAKLEY', 'UNDERARMOUR',
@@ -66,6 +72,13 @@ RAW_BRANDS = {'LACOSTE'}
 # 按<table>裁剪会把表格外面的标题/单位/脚注全裁掉。所以原样渲染、整体裁剪。
 STYLED_BRANDS = {'MONTBELL'}
 
+# 部分品牌的普通表格需要在最上方补一行品牌指定的标题。
+# 标题只作用于对应品牌，避免改变其他品牌现有的出图样式。
+TABLE_TITLES = {
+    'UNIQLO': '商品尺寸(cm)',
+    '优衣库': '商品尺寸(cm)',
+}
+
 
 def get_render_mode(brand_name):
     """按品牌决定用哪种渲染模式（品牌名不区分大小写）"""
@@ -77,6 +90,11 @@ def get_render_mode(brand_name):
     if brand in STYLED_BRANDS:
         return MODE_STYLED
     return MODE_TABLE
+
+
+def get_table_title(brand_name):
+    """返回品牌专属的表格标题；没有配置时不添加标题。"""
+    return TABLE_TITLES.get(brand_name.strip().upper())
 
 
 # ---------------------------------------------------------------- 参数
@@ -117,29 +135,71 @@ def parse_args():
 
 # ---------------------------------------------------------------- 渲染
 
-def build_table_html(description):
+def build_table_html(description, table_title=None):
+    title_html = (
+        f'<div class="size-title">{table_title}</div>'
+        if table_title else ''
+    )
     return f"""
     <html>
         <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-                /* inline-block容器宽度由最宽的表格决定，
-                   配合 table{{width:100%}} 让所有表格自适应到相同宽度 */
-                .size-wrap {{
-                    display: inline-block;
+                html, body {{
+                    margin: 0;
+                    padding: 0;
+                    background: #ffffff;
                 }}
-                table {{
-                    border-collapse: collapse;
+                body {{
+                    width: {MOBILE_CONTENT_WIDTH}px;
+                    padding: 8px;
+                    color: #222222;
+                    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+                    font-size: 14px;
+                }}
+                .size-wrap {{
+                    display: block;
+                    box-sizing: border-box;
                     width: 100%;
+                }}
+                .size-wrap, .size-wrap * {{
+                    box-sizing: border-box;
+                    font-family: "PingFang SC", "Microsoft YaHei", sans-serif !important;
+                }}
+                .size-title {{
+                    width: 100%;
+                    border: 1px solid #dddddd;
+                    border-bottom: 0;
+                    background-color: #f2f2f2;
+                    color: #222222;
+                    font-weight: 600;
+                    font-size: 14px;
+                    text-align: center;
+                    line-height: 1.2;
+                    padding: 4px 5px;
+                }}
+                .size-wrap table {{
+                    border-collapse: collapse;
+                    table-layout: fixed !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
                 }}
                 /* 多个表格宽度一致且紧贴时会连成一张表，
                    加间距把它们在视觉上分开 */
                 table + table {{
-                    margin-top: 24px;
+                    margin-top: 12px;
                 }}
-                th, td {{
+                .size-wrap th, .size-wrap td {{
                     border: 1px solid #dddddd;
                     text-align: left;
-                    padding: 8px;
+                    vertical-align: middle;
+                    white-space: normal !important;
+                    overflow-wrap: anywhere;
+                    word-break: break-word;
+                    font-size: 14px !important;
+                    line-height: 1.2 !important;
+                    padding: 4px 5px !important;
                 }}
                 th {{
                     background-color: #f2f2f2;
@@ -148,6 +208,7 @@ def build_table_html(description):
         </head>
         <body>
             <div class="size-wrap">
+            {title_html}
             {description}
             </div>
         </body>
@@ -161,17 +222,53 @@ def build_list_html(description, mode):
     MODE_LIST 按<br>切分，逐条包<li>；
     MODE_RAW  Description本身就是完整的列表HTML，原样放进body。
     """
-    html = """
+    html = f"""
     <!DOCTYPE html>
     <html>
     <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            ul { list-style-type: none; padding: 0; }
-            li { margin: 2px 0; padding: 4px; background-color: #f5f5f5; border-radius: 2px; }
+            html, body {{ margin: 0; padding: 0; background: #ffffff; }}
+            body {{
+                width: {MOBILE_CONTENT_WIDTH}px;
+                padding: 8px;
+                color: #222222;
+                font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+                font-size: 14px;
+            }}
+            .mobile-content, .mobile-content * {{
+                box-sizing: border-box;
+                max-width: 100%;
+                font-family: "PingFang SC", "Microsoft YaHei", sans-serif !important;
+                overflow-wrap: anywhere;
+            }}
+            .mobile-content {{ width: 100%; }}
+            ul {{ list-style-type: none; margin: 0; padding: 0; }}
+            li {{
+                margin: 2px 0;
+                padding: 3px 5px;
+                font-size: 14px !important;
+                line-height: 1.25;
+                background-color: #f5f5f5;
+                border-radius: 2px;
+            }}
+            .mobile-content li *, .mobile-content p {{
+                font-size: 14px !important;
+                line-height: 1.25;
+            }}
+            .mobile-content p {{ margin: 2px 0; }}
+            table {{ width: 100% !important; table-layout: fixed !important; }}
+            th, td {{
+                white-space: normal !important;
+                word-break: break-word;
+                line-height: 1.2 !important;
+                padding: 4px 5px !important;
+            }}
+            img {{ max-width: 100% !important; height: auto !important; }}
         </style>
     </head>
-    <body>
+    <body><div class="mobile-content">
     """
 
     if mode == MODE_RAW:
@@ -184,32 +281,82 @@ def build_list_html(description, mode):
         html += '</ul>'
 
     return html + """
+    </div>
     </body>
     </html>
     """
 
 
 def build_styled_html(description):
-    """Description自带样式，这里只提供一块画布
+    """保留Description的品牌样式，并追加移动端尺寸约束
 
-    刻意不写任何表格/列表的CSS：出图长什么样完全由Description里的<style>决定，
-    脚本插一手就会跟它冲突。body的padding是给圆角和阴影留的余量，裁剪时会去掉。
+    品牌自带的颜色、边框等继续生效；统一字体、紧凑行高、宽度和换行规则，
+    避免桌面宽表格在手机页面上整体缩得过小。
     """
     return f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
+        html {{
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+        }}
         body {{
             margin: 0;
-            padding: 20px;
+            width: {MOBILE_CONTENT_WIDTH}px;
+            padding: 8px;
             background: #ffffff;
-            font-family: Arial, "Microsoft YaHei", "Meiryo", sans-serif;
+            color: #222222;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            font-size: 14px;
         }}
     </style>
 </head>
-<body>
+<body class="mobile-canvas">
 {description if pd.notna(description) else ''}
+<style>
+    html body.mobile-canvas {{
+        box-sizing: content-box;
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif !important;
+        overflow-wrap: anywhere;
+    }}
+    html body.mobile-canvas * {{
+        box-sizing: border-box;
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif !important;
+        overflow-wrap: anywhere;
+    }}
+    html body.mobile-canvas > *,
+    html body.mobile-canvas div,
+    html body.mobile-canvas section,
+    html body.mobile-canvas article,
+    html body.mobile-canvas p,
+    html body.mobile-canvas ul,
+    html body.mobile-canvas ol {{
+        max-width: 100% !important;
+    }}
+    html body.mobile-canvas table {{
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+    }}
+    html body.mobile-canvas th,
+    html body.mobile-canvas td,
+    html body.mobile-canvas th *,
+    html body.mobile-canvas td * {{
+        white-space: normal !important;
+        word-break: break-word;
+        font-size: 14px !important;
+        line-height: 1.2 !important;
+        padding: 4px 5px !important;
+    }}
+    html body.mobile-canvas img {{
+        max-width: 100% !important;
+        height: auto !important;
+    }}
+</style>
 </body>
 </html>
 """
@@ -234,7 +381,8 @@ def get_driver(mode):
     options.add_argument('--headless')
     if mode in (MODE_TABLE, MODE_STYLED):
         options.add_argument('--disable-gpu')
-        options.add_argument('--window-size=1920,1080')
+        options.add_argument(
+            f'--window-size={MOBILE_VIEWPORT_WIDTH},{MOBILE_INITIAL_HEIGHT}')
     else:
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
@@ -255,7 +403,7 @@ def drop_driver():
         _driver = None
 
 
-def render_table_to_image(description, code, out_path):
+def render_table_to_image(description, code, out_path, table_title=None):
     """渲染表格并按所有<table>的并集包围盒裁剪
 
     成功返回None；Description里没有table时抛NoSizeTableError；
@@ -266,23 +414,22 @@ def render_table_to_image(description, code, out_path):
     try:
         driver = get_driver(MODE_TABLE)
 
-        # driver是整批复用的，上一张图resize后的窗口尺寸会留到现在，
-        # 布局跟着变，出图就不一致了。每张渲染前先恢复初始窗口。
-        driver.set_window_size(1920, 1080)
+        # 固定为手机内容宽度，避免桌面宽图在手机端被整体缩小。
+        driver.set_window_size(MOBILE_VIEWPORT_WIDTH, MOBILE_INITIAL_HEIGHT)
 
         with open(temp_html, "w", encoding="utf-8") as f:
-            f.write(build_table_html(description))
+            f.write(build_table_html(description, table_title))
 
         driver.get(f"file://{os.path.abspath(temp_html)}")
         time.sleep(1)
 
-        # 内容可能高于/宽于默认窗口(1920x1080)，截图只会截到视口大小，
-        # 导致下方表格被截掉。先把窗口撑到内容实际尺寸再截图。
-        content_width = driver.execute_script(
-            "return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);")
+        # 宽度保持不变，只把窗口高度撑到完整内容，防止长表格被截断。
         content_height = driver.execute_script(
             "return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);")
-        driver.set_window_size(max(content_width + 100, 800), content_height + 100)
+        driver.set_window_size(
+            MOBILE_VIEWPORT_WIDTH,
+            max(int(content_height) + 40, 200)
+        )
         time.sleep(0.5)
 
         # 窗口尺寸变了，位置需要重新读取
@@ -290,11 +437,16 @@ def render_table_to_image(description, code, out_path):
         if not tables:
             raise NoSizeTableError("Description中没有table元素")
 
-        # 计算所有<table>的并集包围盒（表格是块级元素，纵向堆叠，
-        # 需要取所有表格的最小left/top和最大right/bottom）
+        # 计算所有<table>和可选标题的并集包围盒（表格是块级元素，纵向堆叠，
+        # 需要取所有元素的最小left/top和最大right/bottom）。只在有标题时
+        # 把标题加入范围，其他品牌仍保持原来的表格裁剪逻辑。
+        crop_elements = list(tables)
+        if table_title:
+            crop_elements.extend(driver.find_elements(By.CLASS_NAME, "size-title"))
+
         left = top = right = bottom = None
-        for table in tables:
-            location, size = table.location, table.size
+        for element in crop_elements:
+            location, size = element.location, element.size
             t_left = location['x']
             t_top = location['y']
             t_right = location['x'] + size['width']
@@ -310,7 +462,7 @@ def render_table_to_image(description, code, out_path):
 
         im = Image.open(BytesIO(driver.get_screenshot_as_png()))
 
-        margin = 5
+        margin = 2
         im = im.crop((
             max(0, left - margin),
             max(0, top - margin),
@@ -355,8 +507,8 @@ def render_styled_to_image(description, code, out_path):
     try:
         driver = get_driver(MODE_STYLED)
 
-        # driver整批复用，先恢复初始窗口，否则上一张图resize后的尺寸会影响布局
-        driver.set_window_size(1920, 1080)
+        # 用手机宽度解析Description里的响应式样式。
+        driver.set_window_size(MOBILE_VIEWPORT_WIDTH, MOBILE_INITIAL_HEIGHT)
 
         with open(temp_html, "w", encoding="utf-8") as f:
             f.write(build_styled_html(description))
@@ -364,10 +516,13 @@ def render_styled_to_image(description, code, out_path):
         driver.get(f"file://{os.path.abspath(temp_html)}")
         time.sleep(1)
 
-        # 内容可能高于视口，截图只截视口大小，先把窗口撑到内容实际尺寸
+        # 宽度保持为手机视口，只把高度撑到完整内容。
         content_height = driver.execute_script(
             "return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);")
-        driver.set_window_size(1920, content_height + 100)
+        driver.set_window_size(
+            MOBILE_VIEWPORT_WIDTH,
+            max(int(content_height) + 40, 200)
+        )
         time.sleep(0.5)
 
         box = driver.execute_script(CONTENT_BOX_JS)
@@ -377,7 +532,7 @@ def render_styled_to_image(description, code, out_path):
         left, top, right, bottom = box
         im = Image.open(BytesIO(driver.get_screenshot_as_png()))
 
-        margin = 12
+        margin = 4
         im = im.crop((
             max(0, int(left) - margin),
             max(0, int(top) - margin),
@@ -392,36 +547,60 @@ def render_styled_to_image(description, code, out_path):
 
 
 def render_list_to_image(description, code, out_path, mode):
-    """渲染尺码列表，整页截图（不裁剪）"""
+    """按手机宽度渲染尺码列表，并裁掉视口中的空白区域。"""
     temp_html = f"temp_{code}.html"
 
     try:
         driver = get_driver(mode)
+        driver.set_window_size(MOBILE_VIEWPORT_WIDTH, MOBILE_INITIAL_HEIGHT)
 
         with open(temp_html, 'w', encoding='utf-8') as f:
             f.write(build_list_html(description, mode))
 
         driver.get(f"file://{os.path.abspath(temp_html)}")
-        time.sleep(2)
+        time.sleep(1)
 
-        driver.save_screenshot(out_path)
+        content_height = driver.execute_script(
+            "return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);")
+        driver.set_window_size(
+            MOBILE_VIEWPORT_WIDTH,
+            max(int(content_height) + 40, 200)
+        )
+        time.sleep(0.5)
+
+        box = driver.execute_script(CONTENT_BOX_JS)
+        if not box:
+            raise NoSizeTableError("Description渲染后没有可见内容")
+
+        left, top, right, bottom = box
+        im = Image.open(BytesIO(driver.get_screenshot_as_png()))
+
+        margin = 4
+        im = im.crop((
+            max(0, int(left) - margin),
+            max(0, int(top) - margin),
+            min(im.width, int(right) + margin + 1),
+            min(im.height, int(bottom) + margin + 1)
+        ))
+        im.convert("RGB").save(out_path, "JPEG", quality=92)
 
     finally:
         if os.path.exists(temp_html):
             os.remove(temp_html)
 
 
-def render_description(description, code, out_path, mode):
+def render_description(description, code, out_path, mode, table_title=None):
     """按渲染模式出图，失败时抛异常"""
     if mode == MODE_TABLE:
-        render_table_to_image(description, code, out_path)
+        render_table_to_image(description, code, out_path, table_title)
     elif mode == MODE_STYLED:
         render_styled_to_image(description, code, out_path)
     else:
         render_list_to_image(description, code, out_path, mode)
 
 
-def render_with_retry(description, code, out_path, mode, attempts=3):
+def render_with_retry(description, code, out_path, mode, attempts=3,
+                      table_title=None):
     """出图，偶发失败时重试。返回True成功/False失败
 
     只重试"可能是偶发"的失败(浏览器崩溃、超时、截图失败)。
@@ -430,7 +609,7 @@ def render_with_retry(description, code, out_path, mode, attempts=3):
     """
     for attempt in range(1, attempts + 1):
         try:
-            render_description(description, code, out_path, mode)
+            render_description(description, code, out_path, mode, table_title)
             return True
 
         except NoSizeTableError as e:
@@ -590,6 +769,7 @@ def process_excel(excel_file, brand_name, color_size_flag, skip_existing):
 
     try:
         mode = get_render_mode(brand_name)
+        table_title = get_table_title(brand_name)
         print(f"开始处理文件: {excel_file}")
         print(f"品牌名称: {brand_name}  渲染模式: {mode}"
               f"{'  (复用已有图片)' if skip_existing else ''}")
@@ -634,7 +814,8 @@ def process_excel(excel_file, brand_name, color_size_flag, skip_existing):
                         temp_img_path = qiniu_path
 
                         if render_with_retry(str(description), current_code,
-                                             temp_img_path, mode):
+                                             temp_img_path, mode,
+                                             table_title=table_title):
                             current_url = upload_with_retry(temp_img_path, qiniu_path)
                             uploaded_urls.append(current_url)
                             os.remove(temp_img_path)
