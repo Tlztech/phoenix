@@ -13,6 +13,7 @@ CDN刷新、Excel读写）完全重复，改一处要改两遍还得测两回，
 """
 
 import os
+import re
 import sys
 import time
 import hashlib
@@ -140,10 +141,41 @@ def parse_args():
 
 # ---------------------------------------------------------------- 渲染
 
+# 尺码区间值里的各种全角/长破折号（如昂跑的"91 — 96"），统一成半角"91-96"。
+# 前后空格一并去掉，配合.range的nowrap样式保证区间值不折行。
+# ー(片假名长音)只在两侧都是数字时才会被当作破折号，不影响正常日文。
+_RANGE_DASH_RE = re.compile(r'(\d+(?:\.\d+)?)\s*[—–―−ー]\s*(\d+(?:\.\d+)?)')
+_TAG_SPLIT_RE = re.compile(r'(<[^>]+>)')
+
+
+def normalize_range_dashes(html):
+    """把"数字 — 数字"规整为"数字-数字"并包上防折行的span
+
+    只处理标签外的文本，避免改坏属性值里的内容(URL、颜色值等)。
+    """
+    parts = _TAG_SPLIT_RE.split(str(html))
+    for i, part in enumerate(parts):
+        if not part.startswith('<'):
+            parts[i] = _RANGE_DASH_RE.sub(
+                r'<span class="range">\1-\2</span>', part)
+    return ''.join(parts)
+
+
 def build_table_html(description, table_title=None):
+    description = normalize_range_dashes(description)
     title_html = (
         f'<div class="size-title">{table_title}</div>'
         if table_title else ''
+    )
+    # 含区间值(91-96)的表格改用自动布局：固定等宽下宽区间值会溢出压到
+    # 边框线；自动布局按内容分配列宽。同时把"可在任意字符间折行"收紧为
+    # 正常折行规则，否则窄列里"90"会被竖排成"9/0"。没有区间值的品牌不受影响。
+    range_css = (
+        '.size-wrap table { table-layout: auto !important; }'
+        '.size-wrap th, .size-wrap td {'
+        ' overflow-wrap: normal !important;'
+        ' word-break: normal !important; }'
+        if 'class="range"' in description else ''
     )
     return f"""
     <html>
@@ -209,6 +241,13 @@ def build_table_html(description, table_title=None):
                 th {{
                     background-color: #f2f2f2;
                 }}
+                /* 尺码区间值(如91-96)保持一行，不跟随单元格的强制折行 */
+                .range {{
+                    white-space: nowrap !important;
+                    overflow-wrap: normal !important;
+                    word-break: keep-all !important;
+                }}
+                {range_css}
             </style>
         </head>
         <body>
