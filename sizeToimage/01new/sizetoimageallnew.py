@@ -143,21 +143,28 @@ def parse_args():
 
 # 尺码区间值里的各种全角/长破折号（如昂跑的"91 — 96"），统一成半角"91-96"。
 # 前后空格一并去掉，配合.range的nowrap样式保证区间值不折行。
-# ー(片假名长音)只在两侧都是数字时才会被当作破折号，不影响正常日文。
-_RANGE_DASH_RE = re.compile(r'(\d+(?:\.\d+)?)\s*[—–―−ー]\s*(\d+(?:\.\d+)?)')
+# 可选的短字母前缀(如美码"W 8 — 10.5"的W/M)一并包进span，否则会在
+# 前缀后的空格处折行。ー(片假名长音)只在两侧都是数字时才会被当作
+# 破折号，不影响正常日文。
+_RANGE_DASH_RE = re.compile(
+    r'(?:\b([A-Za-z]{1,3})\s+)?(\d+(?:\.\d+)?)\s*[—–―−ー]\s*(\d+(?:\.\d+)?)')
 _TAG_SPLIT_RE = re.compile(r'(<[^>]+>)')
 
 
+def _range_repl(m):
+    prefix = f'{m.group(1)} ' if m.group(1) else ''
+    return f'<span class="range">{prefix}{m.group(2)}-{m.group(3)}</span>'
+
+
 def normalize_range_dashes(html):
-    """把"数字 — 数字"规整为"数字-数字"并包上防折行的span
+    """把"[前缀 ]数字 — 数字"规整为"[前缀 ]数字-数字"并包上防折行的span
 
     只处理标签外的文本，避免改坏属性值里的内容(URL、颜色值等)。
     """
     parts = _TAG_SPLIT_RE.split(str(html))
     for i, part in enumerate(parts):
         if not part.startswith('<'):
-            parts[i] = _RANGE_DASH_RE.sub(
-                r'<span class="range">\1-\2</span>', part)
+            parts[i] = _RANGE_DASH_RE.sub(_range_repl, part)
     return ''.join(parts)
 
 
