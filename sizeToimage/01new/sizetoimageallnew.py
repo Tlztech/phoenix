@@ -77,6 +77,11 @@ STYLED_BRANDS = {'MONTBELL'}
 TABLE_TITLES = {
     'UNIQLO': '商品尺寸(cm)',
     '优衣库': '商品尺寸(cm)',
+    '昂跑': '人体净尺寸参考表(cm)',
+    'ON': '人体净尺寸参考表(cm)',
+    'ON RUNNING': '人体净尺寸参考表(cm)',
+    'PATAGONIA': '商品尺寸表(cm)',
+    '巴塔哥尼亚': '商品尺寸表(cm)',
 }
 
 
