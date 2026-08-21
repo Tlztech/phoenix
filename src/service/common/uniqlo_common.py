@@ -41,7 +41,8 @@ def sprider(item_codes, targets, object='stock'):
                             for action in actions:
                                 if action['action_type'] == 'dynamic':
                                     if not driver:
-                                        driver = crawler_util.get_driver(env_util.get_env('DRIVER_MODE'))
+                                        # driver = crawler_util.get_driver(env_util.get_env('DRIVER_MODE'))
+                                        driver = crawler_util.get_undetected_driver(env_util.get_env('DRIVER_MODE'))
                                     if action['url']:
                                         driver.get(action['url'].replace('%item_code%', str(item_code)))
                                     if action['action'] == "click and get":
@@ -326,5 +327,6 @@ def sprider(item_codes, targets, object='stock'):
         log_util.error(f"发生未知错误，数据处理停止: {''.join(traceback.format_exception(None, e, e.__traceback__))}")
     finally:
         if driver:
-            crawler_util.close_driver(driver)
+            # crawler_util.close_driver(driver)
+            crawler_util.close_undetected_driver(driver)
         log_util.info(json.dumps(output_data_list, indent=4, ensure_ascii=False))
