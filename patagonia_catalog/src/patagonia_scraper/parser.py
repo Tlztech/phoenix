@@ -72,17 +72,23 @@ def _ordered_union(*values: Iterable[str]) -> list[str]:
     return result
 
 
+# Salesforce image CDN. The site switched (2026-09) from the first host to the
+# second; both serve identical bytes. Output keeps the first, as the reference does.
+IMAGE_HOST = "edge.dis.commercecloud.salesforce.com"
+IMAGE_HOSTS = (IMAGE_HOST, "dis.patagonia.jp")
+
+
 def clean_image_url(url: str | None) -> str:
     """Remove resize parameters while keeping the image format used by the sample."""
     if not url:
         return ""
     raw = unescape(url).strip()
     parts = urlsplit(raw)
-    if "edge.dis.commercecloud.salesforce.com" not in parts.netloc:
+    if parts.netloc not in IMAGE_HOSTS:
         return raw
     params = dict(parse_qsl(parts.query, keep_blank_values=True))
     query = urlencode({"sfrm": params.get("sfrm", "png")})
-    return urlunsplit((parts.scheme, parts.netloc, parts.path, query, ""))
+    return urlunsplit((parts.scheme, IMAGE_HOST, parts.path, query, ""))
 
 
 def extract_image_urls(page: Any) -> list[str]:
@@ -99,7 +105,7 @@ def extract_image_urls(page: Any) -> list[str]:
             if value:
                 candidates.extend(part.strip().split()[0] for part in value.split(",") if part.strip())
         for candidate in candidates:
-            if "edge.dis.commercecloud.salesforce.com" not in candidate:
+            if urlsplit(unescape(candidate)).netloc not in IMAGE_HOSTS:
                 continue
             cleaned = clean_image_url(candidate)
             if cleaned not in seen:
