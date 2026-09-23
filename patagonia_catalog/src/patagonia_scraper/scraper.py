@@ -283,6 +283,10 @@ class PatagoniaScraper:
                 except (ValueError, json.JSONDecodeError, KeyError, TypeError, AttributeError):
                     LOGGER.warning("Product schema variant not found; using generic parser: %s", url)
                     product = parse_generic_product_page(page, url)
+                if not product.title:
+                    # Not a real product page (soft block / broken render): raise so
+                    # it is NOT checkpointed and gets retried on the next run.
+                    raise RuntimeError(f"商品页未取到标题，不记入断点（稍后续爬重试）: {url}")
                 rows = self._rows_for_product(product, page, url, fetch)
                 done = checkpoint.add(key, rows)  # flushed to disk immediately
                 LOGGER.info("Done %s/%s: %s", done, total, url)
@@ -330,6 +334,9 @@ class PatagoniaScraper:
         lowered = str(body).lower()
         if any(marker in lowered for marker in ("page not found", "error 404", "access denied")):
             raise RuntimeError(f"Blocked or missing product page: {url}")
+        html = getattr(page, "text", "") or ""
+        if html and '"ProductGroup"' not in html and 'id="product-schema"' not in html:
+            raise RuntimeError(f"Product page has no product data (Akamai soft block?): {url}")
 
     def _color_images(self, color, model: str, page: object, fetch) -> tuple[str, list[str]]:
         """Return ``(main_image, other_images)`` for one colour.

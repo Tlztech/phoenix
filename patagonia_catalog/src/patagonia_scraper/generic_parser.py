@@ -40,9 +40,9 @@ def _json_objects(page: Any) -> list[dict[str, Any]]:
 
 def _first_text(page: Any, selectors: list[str]) -> str:
     for selector in selectors:
-        value = page.css(selector).get()
+        value = normalize_space(" ".join(page.css(f"{selector} ::text").getall()))
         if value:
-            return normalize_space(value)
+            return value
     return ""
 
 

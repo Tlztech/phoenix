@@ -288,7 +288,7 @@ class PatagoniaFetcher:
         with self._warm_lock:
             if time.time() - self._last_rewarm > 8:
                 try:
-                    LOGGER.warning("Got 404 (Akamai block); clearing cookies + re-warming")
+                    LOGGER.warning("Akamai block (404 / soft block); clearing cookies + re-warming")
                     if self._context is not None:
                         self._context.clear_cookies()
                     page.goto(HOME_URL, wait_until="domcontentloaded", timeout=self.config.timeout_ms)
@@ -334,14 +334,28 @@ class PatagoniaFetcher:
             except Exception as exc:
                 LOGGER.warning("Forced re-warm failed: %s", exc)
 
+    @staticmethod
+    def _is_blocked(result: FetchedPage, url: str) -> bool:
+        """404, or an Akamai *soft* block: a product page served with ``200`` but
+        without the product data (no ``ProductGroup`` JSON-LD). Left undetected,
+        the soft block gets parsed into empty rows and checkpointed as done."""
+        if result.status == 404:
+            return True
+        if result.status < 400 and "/product/" in url and ".html" in url:
+            text = result.text or ""
+            return '"ProductGroup"' not in text and 'id="product-schema"' not in text
+        return False
+
     def _fetch_with_retry(
         self, page: Any, url: str, scroll: bool, page_action: Callable[[Any], None] | None
     ) -> FetchedPage:
         attempts = max(1, self.config.max_retries)
         result = self._render(page, url, scroll=scroll, page_action=page_action)
         for attempt in range(1, attempts):
-            if result.status != 404:
+            if not self._is_blocked(result, url):
                 break
+            if result.status != 404:
+                LOGGER.warning("商品页无商品数据（status %s，疑似 Akamai 软拦截）: %s", result.status, url)
             with self._failure_lock:
                 self._failure_streak += 1
                 streak = self._failure_streak
@@ -351,7 +365,7 @@ class PatagoniaFetcher:
                 self._abort.set()
             self._recover(page, attempt)
             result = self._render(page, url, scroll=scroll, page_action=page_action)
-        if result.status != 404:
+        if not self._is_blocked(result, url):
             with self._failure_lock:
                 self._failure_streak = 0
         return result
