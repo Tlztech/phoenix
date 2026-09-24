@@ -180,6 +180,16 @@ class PatagoniaFetcher:
         self._failure_streak = 0
         self._abort = threading.Event()
 
+    @property
+    def block_streak(self) -> int:
+        """Consecutive blocked responses right now (0 = not being blocked)."""
+        with self._failure_lock:
+            return self._failure_streak
+
+    @property
+    def aborted(self) -> bool:
+        return self._abort.is_set()
+
     # -- lifecycle ---------------------------------------------------------
     def _default_profile(self) -> str:
         return str((Path.cwd() / ".chrome-profile").resolve())

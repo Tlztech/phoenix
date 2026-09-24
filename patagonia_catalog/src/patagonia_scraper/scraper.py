@@ -7,6 +7,7 @@ import os
 import re
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
@@ -288,16 +289,41 @@ class PatagoniaScraper:
                     # it is NOT checkpointed and gets retried on the next run.
                     raise RuntimeError(f"商品页未取到标题，不记入断点（稍后续爬重试）: {url}")
                 rows = self._rows_for_product(product, page, url, fetch)
-                done = checkpoint.add(key, rows)  # flushed to disk immediately
-                LOGGER.info("Done %s/%s: %s", done, total, url)
-                if done % flush_every == 0:
+                with holdback_lock:
+                    if self.client.block_streak > 0:
+                        # A block is under way: the AJAX calls (alt-assets gallery,
+                        # Product-Variation stock/price) of recent products may have
+                        # come back empty. Drop them so the next run redoes them.
+                        dropped = len(holdback) + 1
+                        holdback.clear()
+                        LOGGER.warning("检测到拦截，丢弃最近 %s 个商品（可能缺图/缺库存），续爬时重抓", dropped)
+                        return rows
+                    holdback.append((key, rows))
+                    done = checkpoint.done_count
+                    while len(holdback) > holdback_size:
+                        done = checkpoint.add(*holdback.popleft())  # flushed to disk immediately
+                LOGGER.info("Done %s/%s: %s", done + len(holdback), total, url)
+                if done and done % flush_every == 0:
                     self._flush_partial(checkpoint, partial_path)
                 if sim_stop and fresh_run and done >= sim_stop:
                     LOGGER.warning("[模拟] 已抓 %s 个，模拟被限流 -> 中止本轮", done)
                     self.client._abort.set()
                 return rows
 
+            # The last few finished products are held back from the checkpoint: a
+            # block shows up on the AJAX endpoints (empty 200s) slightly before any
+            # product page is detected as blocked, so they may carry missing data.
+            holdback: deque[tuple[str, list[ProductRow]]] = deque()
+            holdback_lock = threading.Lock()
+            holdback_size = max(1, self.config.fetch.concurrency) * 3
             self.client.run_pool(pending, handler)
+            if self.client.aborted or self.client.block_streak > 0:
+                if holdback:
+                    LOGGER.warning("本轮因拦截中止，丢弃最近 %s 个商品，续爬时重抓", len(holdback))
+            else:
+                for item in holdback:
+                    checkpoint.add(*item)
+            holdback.clear()
         finally:
             self.client.close()
 
