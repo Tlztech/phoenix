@@ -74,13 +74,18 @@ def fetch_patagonia_stock_static(item_code, sku_file):
                 color_elements = tree.xpath(color_path)
                 find_color = False
 
+                # 收集所有颜色元素的 item_code_color 用于调试
+                color_item_code_list = []
+                color_attr_key = list(action['path'].keys())[0]
                 for color_elem in color_elements:
-                    item_code_color = color_elem.get(list(action['path'].keys())[0])
+                    item_code_color = color_elem.get(color_attr_key)
+                    color_item_code_list.append(item_code_color)
                     if item_code_color == color_code:
                         find_color = True
                         break
 
                 if not find_color and color_elements:
+                    log_util.info(f"颜色未匹配 - 目标color_code: {color_code}, 网页获取颜色集合: {color_item_code_list}")
                     return {'item_code': color_code, 'url': '商品color无货', 'sku': sku_file}
 
                 # 3. 获取商品链接
