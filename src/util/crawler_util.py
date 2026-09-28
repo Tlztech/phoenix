@@ -392,11 +392,11 @@ def safe_goto(page, url, max_retries=3, delay_between_retries=5):
 
 # ======== scrapling[fetchers] 支持函数 ========
 
-# StealthySession 全局实例（避免重复创建）
-_browser_session = None
-_browser_count = 0
-_browser_warmed = False
-_current_base_url = None  # 当前会话的基础URL
+# Per-host 会话字典
+_browser_sessions = {}   # {host: StealthySession}（Playwright 浏览器模式）
+_browser_counts = {}     # {host: int}
+_browser_warmeds = {}    # {host: bool}
+_curl_sessions = {}      # {host: curl_cffi.Session}（轻量 HTTP 模式，优先使用）
 
 # 默认配置（可被调用方覆盖）
 DEFAULT_CONFIG = {
@@ -409,6 +409,47 @@ DEFAULT_CONFIG = {
 }
 
 
+def _get_host_from_config(cfg: dict) -> str:
+    """从 config 推导 host：优先显式传入，否则从 base_url 域名自动提取
+    例如 https://www.uniqlo.com/jp/ja → 'uniqlo'
+    """
+    host = cfg.get("host")
+    if host:
+        return host
+    from urllib.parse import urlparse
+    netloc = urlparse(cfg.get("base_url", "")).netloc
+    domain = netloc.replace("www.", "")
+    return domain.split(".")[0] if domain else "default"
+
+
+def _get_or_create_curl_session(host: str, home_url: str = None):
+    """获取或创建 curl_cffi Session（按 host 隔离 cookies）
+    curl_cffi 在 TLS 层伪造完整 Chrome 指纹，Akamai 检测不到
+    第一次创建时先访问 home_url 预热 cookie
+    """
+    global _curl_sessions
+    if host not in _curl_sessions:
+        from curl_cffi import requests as curl_requests
+        session = curl_requests.Session()
+        session.headers.update({
+            "Accept-Language": "ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Cache-Control": "no-cache",
+        })
+        _curl_sessions[host] = session
+        log_util.info(f"初始化 curl_cffi Session [{host}]")
+
+        # === 先访问 home_url 预热 Akamai cookie ===
+        if home_url:
+            try:
+                log_util.info(f"[{host}] curl_cffi 预热 cookie: {home_url}")
+                resp = session.get(home_url, impersonate="chrome124", timeout=30)
+                log_util.info(f"[{host}] curl_cffi 预热完成 ({len(resp.text)} 字节)")
+            except Exception as e:
+                log_util.info(f"[{host}] curl_cffi 预热失败（继续）: {e}")
+
+    return _curl_sessions[host]
+
+
 def _is_failover(html: str, min_len: int = 30000) -> bool:
     """检测 failover 页面（反爬拦截）
     
@@ -419,102 +460,147 @@ def _is_failover(html: str, min_len: int = 30000) -> bool:
     Returns:
         True 如果检测到failover特征，False 否则
     """
-    # 如果内容为空，肯定是失败
     if not html:
         return True
     
-    # 记录调试信息
     log_util.info(f"页面长度: {len(html)} 字节")
     
-    # 检测 failover 特征字符串（更严格的检测）
+    # 1. 关键词检测（Akamai 拦截页 / JS challenge / captcha）
     lowered = html[:5000].lower()
-    has_failover = "spa-sitefailover" in lowered or "botfailover" in lowered or "sit tight" in lowered
-    
-    if has_failover:
-        log_util.info(f"检测到 failover 特征: spa-sitefailover={('spa-sitefailover' in lowered)}, botfailover={('botfailover' in lowered)}, sit tight={('sit tight' in lowered)}")
+    failover_keywords = [
+        "spa-sitefailover", "botfailover", "sit tight",
+        "access denied", "you don't have permission",
+        "reference #", "edgesuite.net", "error.edgesuite",
+        "blocked", "captcha", "error.akamai",
+    ]
+    matched = [kw for kw in failover_keywords if kw in lowered]
+    if matched:
+        log_util.info(f"检测到 failover 关键词: {matched}")
         return True
     
-    # 对于 API 响应（如 JSON），长度可能很小，不应该被判定为 failover
-    # 只对 HTML 页面应用长度检测
+    # 2. 有效商品页面不可能 < 2000 字节
+    # 549 字节这种 = SPA 空壳 / Akamai JS challenge / 重定向
+    if len(html) < 2000:
+        log_util.info(f"页面长度 {len(html)} < 2000，判定为 failover")
+        return True
+    
+    # 3. HTML 页面长度检测
     if len(html) < min_len:
-        # 检查是否是 HTML 页面
         if html.strip().startswith("<!DOCTYPE") or html.strip().startswith("<html"):
             log_util.info(f"HTML页面长度 {len(html)} < {min_len}，判定为 failover")
             return True
-        else:
-            # 可能是 API 响应（JSON等），不判定为 failover
-            log_util.info(f"非HTML响应，长度 {len(html)}，不判定为 failover")
-            return False
     
     return False
 
 
+def _find_local_chrome():
+    """检测用户本机已安装的 Chrome 路径（Windows）
+    使用本机 Chrome 可以让 StealthySession 的 TLS 指纹和用户手动浏览器完全一致
+    Akamai 就不会拦截了
+    """
+    import os
+    candidates = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        os.path.expanduser(r"~\AppData\Local\Google\Chrome\Application\chrome.exe"),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return None
+
+
 def _ensure_browser(config: dict = None):
-    """确保浏览器会话已初始化并预热"""
-    global _browser_session, _browser_count, _browser_warmed, _current_base_url
+    """确保指定 host 的浏览器会话已初始化并预热"""
+    global _browser_sessions, _browser_counts, _browser_warmeds
     from scrapling.fetchers import StealthySession
     import time
     
-    # 使用默认配置或传入的配置
     cfg = config or DEFAULT_CONFIG
+    host = _get_host_from_config(cfg)
     
-    if _browser_session is None:
-        log_util.info("初始化 StealthySession...")
-        _browser_session = StealthySession(
-            headless=False,          # 必须使用有头模式（反爬检测）
-            network_idle=True,
-            humanize=True,
-            os_randomize=True,
-            google_search=True,      # referer 设置为 Google
-            disable_resources=False, # 加载所有资源
-            timeout=60000,           # 超时时间（60秒）
+    if host not in _browser_sessions:
+        # === 关键：用用户本机已安装的 Chrome ===
+        # playwright 自带的 Chromium TLS 指纹和真实 Chrome 不同
+        # Akamai 会识别出来拦截，但用户本机 Chrome 不会被拦
+        local_chrome = _find_local_chrome()
+        if local_chrome:
+            log_util.info(f"[{host}] 使用本机 Chrome: {local_chrome}")
+        else:
+            log_util.info(f"[{host}] 未找到本机 Chrome，使用 playwright 内置 Chromium")
+
+        log_util.info(f"初始化 StealthySession [{host}]...")
+        
+        session_kwargs = dict(
+            headless=False, network_idle=True, humanize=True,
+            os_randomize=True, google_search=True,
+            disable_resources=False, timeout=60000,
         )
-        _browser_session.start()
-        _browser_warmed = False
-        _browser_count = 0
-        _current_base_url = cfg["base_url"]
+        if local_chrome:
+            session_kwargs["executable_path"] = local_chrome
+        
+        session = StealthySession(**session_kwargs)
+        session.start()
+
+        # 注入日本 locale + 标准视口（uniqlo 是日本站）
+        try:
+            pw_browser = getattr(session, '_browser', None)
+            if pw_browser and pw_browser.contexts:
+                ctx = pw_browser.contexts[0]
+                ctx.add_init_script("""
+                    Object.defineProperty(navigator, 'language', {get: () => 'ja-JP'});
+                    Object.defineProperty(navigator, 'languages', {get: () => ['ja-JP','ja','en-US','en']});
+                """)
+                ctx.grant_permissions(['geolocation'])
+                ctx.set_viewport_size({'width': 1920, 'height': 1080})
+                log_util.info(f"[{host}] 注入 ja-JP locale + 视口 1920x1080")
+        except Exception as e:
+            log_util.info(f"[{host}] locale/viewport 设置失败（继续）: {e}")
+
+        _browser_sessions[host] = session
+        _browser_warmeds[host] = False
+        _browser_counts[host] = 0
     
-    if not _browser_warmed:
+    if not _browser_warmeds.get(host, False):
         home_url = cfg.get("home_url", f"{cfg['base_url']}/home/")
         warmup_timeout = cfg.get("warmup_timeout", 30000)
         delay_between = cfg.get("delay_between", 1.5)
-        log_util.info(f"预热会话 ({home_url})")
+        log_util.info(f"预热会话 [{host}] ({home_url})")
         try:
-            log_util.info(f"开始预热，超时时间: {warmup_timeout}ms")
-            _browser_session.fetch(
-                home_url, 
-                network_idle=True, 
-                wait=5000,           # 减少等待时间
-                timeout=warmup_timeout  # 预热超时
+            _browser_sessions[host].fetch(
+                home_url, network_idle=True, wait=5000, timeout=warmup_timeout
             )
-            log_util.info("预热完成")
-            _browser_warmed = True
+            log_util.info(f"预热会话 [{host}] 完成")
+            _browser_warmeds[host] = True
             time.sleep(delay_between)
         except Exception as e:
-            log_util.error(f"预热失败（继续）: {e}")
-            _browser_warmed = True
+            log_util.error(f"预热会话 [{host}] 失败（继续）: {e}")
+            _browser_warmeds[host] = True
 
 
-def _recycle_browser():
-    """回收浏览器会话（防止长时间访问被封）"""
-    global _browser_session, _browser_warmed, _browser_count, _current_base_url
+def _recycle_browser(host: str = "default"):
+    """回收指定 host 的浏览器会话"""
+    global _browser_sessions, _browser_warmeds, _browser_counts
     
-    if _browser_session is not None:
-        log_util.info(f"处理 {_browser_count} 件后回收会话")
+    session = _browser_sessions.get(host)
+    count = _browser_counts.get(host, 0)
+    if session is not None:
+        log_util.info(f"回收会话 [{host}] (已处理 {count} 件)")
         try:
-            _browser_session.close()
+            session.close()
+        except Exception:
+            pass
         finally:
-            _browser_session = None
-            _browser_warmed = False
-            _browser_count = 0
-            _current_base_url = None
+            _browser_sessions.pop(host, None)
+            _browser_warmeds.pop(host, None)
+            _browser_counts.pop(host, None)
 
 
-def _maybe_recycle(recycle_every: int = 25):
-    """检查是否需要回收会话"""
-    global _browser_count
-    if recycle_every > 0 and _browser_count > 0 and _browser_count % recycle_every == 0:
-        _recycle_browser()
+def _maybe_recycle(host: str = "default", recycle_every: int = 25):
+    """检查是否需要回收指定 host 的会话"""
+    count = _browser_counts.get(host, 0)
+    if recycle_every > 0 and count > 0 and count % recycle_every == 0:
+        _recycle_browser(host)
 
 
 def _get_html(response) -> str:
@@ -528,71 +614,106 @@ def _get_html(response) -> str:
 
 def fetch_with_scrapling(url, retries=3, config: dict = None):
     """
-    使用 scrapling.fetchers.StealthySession 获取网页内容（反爬优化版）
-    参照 patagonia_scrapling/main.py 实现
+    获取网页内容（反爬优化版）
+    优先用 curl_cffi（TLS 层伪造 Chrome 指纹，Akamai 检测不到）
+    curl_cffi 失败后回退 scrapling StealthySession（Playwright 浏览器模式）
 
     Args:
         url (str): 目标网页的URL（支持相对路径，会自动转换为完整URL）。
         retries (int): 请求失败时的重试次数。
         config (dict): 可选配置字典，包含以下键：
+            - host: 会话标识（不填则从 base_url 域名自动推导）
             - base_url: 网站基础URL（用于相对路径转换）
             - home_url: 首页URL（用于会话预热）
             - recycle_every: 会话回收间隔（默认25）
             - delay_between: 请求间隔（默认1.5秒）
             - failover_min_len: failover检测最小长度（默认30000）
             - warmup_timeout: 预热超时（默认30000ms）
+            - backend: 'auto'(默认先curl后stealthy) / 'curl' / 'stealthy'
 
     Returns:
         bytes: 网页的HTML内容（字节串），如果失败则返回 None。
     """
-    global _browser_count
     import time
     from urllib.parse import urljoin
     
-    # 使用默认配置或传入的配置
     cfg = config or DEFAULT_CONFIG
+    host = _get_host_from_config(cfg)
+    backend = cfg.get("backend", "auto")
     
-    last_html = ""
-    
-    # 将相对路径转换为完整URL
     base_url = cfg.get("base_url", "https://www.patagonia.jp")
     if url.startswith("/"):
         url = urljoin(base_url, url)
         log_util.info(f"转换相对路径: {url}")
     
-    for attempt in range(retries + 1):
-        _ensure_browser(cfg)
-        
-        try:
-            log_util.info(f"获取页面 ({attempt+1}/{retries+1}): {url}")
-            response = _browser_session.fetch(url, network_idle=True)
-            
-            html = _get_html(response)
-            
-            failover_min_len = cfg.get("failover_min_len", 30000)
-            if not _is_failover(html, failover_min_len):
-                _browser_count += 1
-                recycle_every = cfg.get("recycle_every", 25)
-                _maybe_recycle(recycle_every)
-                delay_between = cfg.get("delay_between", 1.5)
-                time.sleep(delay_between)
-                return html.encode("utf-8")
-            
-            last_html = html
-            log_util.error(f"检测到 failover 页面，重试 ({attempt+1}/{retries+1})")
-            
-            # failover 后回收会话并等待
-            _recycle_browser()
-            delay_between = cfg.get("delay_between", 1.5)
-            time.sleep(delay_between * (attempt + 2))
-            
-        except Exception as e:
-            log_util.error(f"请求异常 ({attempt+1}/{retries+1}): {e}")
-            _recycle_browser()
-            delay_between = cfg.get("delay_between", 1.5)
-            time.sleep(delay_between * 2)
+    failover_min_len = cfg.get("failover_min_len", 30000)
+    delay_between = cfg.get("delay_between", 1.5)
     
-    return last_html.encode("utf-8") if last_html else None
+    # ====== 尝试 curl_cffi（TLS 层伪造，最快最稳）======
+    if backend in ("auto", "curl"):
+        curl_failover_detected = False
+        for attempt in range(retries + 1):
+            try:
+                home_url = cfg.get("home_url", f"{cfg['base_url']}/home/")
+                session = _get_or_create_curl_session(host, home_url=home_url)
+                log_util.info(f"[{host}] curl_cffi 获取 ({attempt+1}/{retries+1}): {url}")
+                resp = session.get(
+                    url,
+                    impersonate="chrome124",
+                    timeout=30,
+                    allow_redirects=True,
+                )
+                html = resp.text or ""
+                if not _is_failover(html, failover_min_len):
+                    log_util.info(f"[{host}] curl_cffi 成功 ({len(html)} 字节)")
+                    time.sleep(delay_between)
+                    return html.encode("utf-8")
+                # 检测到 Akamai 拦截关键词 → curl_cffi 对此站点完全无效，直接回退
+                lowered = html[:5000].lower()
+                if any(kw in lowered for kw in ["access denied", "reference #", "edgesuite.net", "you don't have permission"]):
+                    curl_failover_detected = True
+                    log_util.info(f"[{host}] curl_cffi 被 Akamai 拦截（此站点无效），直接回退")
+                    break
+                log_util.info(f"[{host}] curl_cffi 检测到 failover ({len(html)}字节)，重试 ({attempt+1}/{retries+1})")
+                time.sleep(delay_between * (attempt + 2))
+            except Exception as e:
+                log_util.error(f"[{host}] curl_cffi 异常 ({attempt+1}/{retries+1}): {e}")
+                time.sleep(delay_between * 2)
+        
+        if backend == "curl":
+            return None  # 只走 curl，不回退
+        if curl_failover_detected:
+            log_util.info(f"[{host}] curl_cffi 被 Akamai 拦截，回退 StealthySession")
+        else:
+            log_util.info(f"[{host}] curl_cffi 全部失败，回退 StealthySession")
+    
+    # ====== 回退 StealthySession（Playwright 浏览器模式）======
+    if backend in ("auto", "stealthy"):
+        global _browser_counts
+        last_html = ""
+        for attempt in range(retries + 1):
+            _ensure_browser(cfg)
+            try:
+                log_util.info(f"[{host}] StealthySession 获取 ({attempt+1}/{retries+1}): {url}")
+                response = _browser_sessions[host].fetch(url, network_idle=True)
+                html = _get_html(response)
+                
+                if not _is_failover(html, failover_min_len):
+                    _browser_counts[host] = _browser_counts.get(host, 0) + 1
+                    _maybe_recycle(host, cfg.get("recycle_every", 25))
+                    time.sleep(delay_between)
+                    return html.encode("utf-8")
+                last_html = html
+                log_util.error(f"[{host}] StealthySession 检测到 failover，重试")
+                _recycle_browser(host)
+                time.sleep(delay_between * (attempt + 2))
+            except Exception as e:
+                log_util.error(f"[{host}] StealthySession 异常: {e}")
+                _recycle_browser(host)
+                time.sleep(delay_between * 2)
+        return last_html.encode("utf-8") if last_html else None
+    
+    return None
 
 
 def close_playwright_driver(page, context, browser):
